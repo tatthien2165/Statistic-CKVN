@@ -1,262 +1,459 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="vi">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Quant Anomaly Detector</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenClaw Quant Dashboard</title>
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root {
-            --bg-dark: #0f172a;
-            --card-bg: rgba(30, 41, 59, 0.7);
-            --text-primary: #f8fafc;
-            --text-secondary: #94a3b8;
-            --accent-blue: #3b82f6;
-            --accent-green: #22c55e;
-            --accent-red: #ef4444;
-            --accent-orange: #fb923c;
+            --bg: #0a1019;
+            --panel: #141c28;
+            --panel-2: #1b2636;
+            --panel-3: #101720;
+            --line: rgba(255, 255, 255, 0.08);
+            --text: #e8eef9;
+            --muted: #8ea0bb;
+            --blue: #3b82f6;
+            --green: #22c55e;
+            --orange: #f59e0b;
+            --red: #ef4444;
+            --shadow: 0 18px 40px rgba(0, 0, 0, 0.24);
         }
 
-        * {
-            box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
-        }
+        * { box-sizing: border-box; }
 
         body {
-            font-family: 'Inter', sans-serif;
-            background-color: var(--bg-dark);
-            color: var(--text-primary);
             margin: 0;
-            padding: 0;
-            overflow-x: hidden;
-            background-image: 
-                radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.05) 0%, transparent 40%),
-                radial-gradient(circle at 90% 80%, rgba(34, 197, 94, 0.05) 0%, transparent 40%);
+            color: var(--text);
+            font-family: "Be Vietnam Pro", sans-serif;
+            background:
+                radial-gradient(circle at top left, rgba(59, 130, 246, 0.12), transparent 24%),
+                radial-gradient(circle at bottom right, rgba(34, 197, 94, 0.09), transparent 26%),
+                var(--bg);
         }
 
         .container {
-            max-width: 1000px;
+            width: min(1440px, calc(100% - 24px));
             margin: 0 auto;
-            padding: 1rem;
+            padding: 18px 0 28px;
         }
 
-        header {
-            padding: 1.5rem 0;
-            text-align: center;
+        .topbar {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            margin-bottom: 14px;
         }
 
-        h1 {
-            font-size: 1.5rem;
-            font-weight: 700;
+        .brand h1 {
             margin: 0;
-            background: linear-gradient(to right, #60a5fa, #34d399);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
+            font-size: 28px;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+        }
+
+        .brand p {
+            margin: 6px 0 0;
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .run-btn {
+            border: 0;
+            border-radius: 12px;
+            padding: 12px 18px;
+            font: inherit;
+            font-weight: 700;
+            color: white;
+            cursor: pointer;
+            background: linear-gradient(135deg, #2563eb, #1d4ed8);
+            box-shadow: 0 12px 24px rgba(37, 99, 235, 0.22);
+        }
+
+        .run-btn:disabled {
+            opacity: 0.65;
+            cursor: not-allowed;
+        }
+
+        .dashboard {
+            display: grid;
+            grid-template-columns: 320px minmax(0, 1fr) 320px;
+            gap: 14px;
+        }
+
+        .panel {
+            background: rgba(20, 28, 40, 0.92);
+            border: 1px solid var(--line);
+            border-radius: 18px;
+            box-shadow: var(--shadow);
+        }
+
+        .panel-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 10px;
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--line);
+        }
+
+        .panel-head h2,
+        .panel-head h3 {
+            margin: 0;
+            font-size: 18px;
+        }
+
+        .panel-sub {
+            color: var(--muted);
+            font-size: 12px;
         }
 
         .controls {
-            background: var(--card-bg);
-            backdrop-filter: blur(12px);
-            border-radius: 1rem;
-            padding: 1.25rem;
-            margin-bottom: 1.5rem;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+            padding: 16px;
+        }
+
+        .toggle-group,
+        .form-grid {
+            display: grid;
+            gap: 12px;
+        }
+
+        .toggle-group {
+            grid-template-columns: repeat(2, 1fr);
+            padding: 4px;
+            border-radius: 12px;
+            background: var(--panel-3);
+            margin-bottom: 14px;
+        }
+
+        .toggle-btn {
+            border: 0;
+            background: transparent;
+            color: var(--muted);
+            font: inherit;
+            font-weight: 600;
+            padding: 10px 12px;
+            border-radius: 10px;
+            cursor: pointer;
+        }
+
+        .toggle-btn.active {
+            background: var(--blue);
+            color: white;
         }
 
         .form-grid {
-            display: grid;
             grid-template-columns: 1fr;
-            gap: 1rem;
-        }
-
-        @media (min-width: 640px) {
-            .form-grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
         }
 
         .input-group {
-            display: flex;
-            flex-direction: column;
-            gap: 0.4rem;
+            display: grid;
+            gap: 6px;
         }
 
         label {
-            font-size: 0.75rem;
+            font-size: 11px;
+            color: var(--muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
             font-weight: 600;
-            color: var(--text-secondary);
+        }
+
+        input, select {
+            width: 100%;
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            background: #0e1521;
+            color: var(--text);
+            padding: 11px 12px;
+            font: inherit;
+        }
+
+        .summary-box {
+            margin: 0 16px 16px;
+            padding: 16px;
+            border-radius: 16px;
+            background: linear-gradient(180deg, rgba(28, 42, 63, 0.95), rgba(17, 26, 39, 0.95));
+            border: 1px solid var(--line);
+        }
+
+        .summary-ticker {
+            display: flex;
+            align-items: baseline;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 10px;
+        }
+
+        .summary-ticker strong {
+            font-size: 30px;
+            font-weight: 700;
+        }
+
+        .summary-ticker span {
+            color: var(--muted);
+            font-size: 12px;
+        }
+
+        .summary-price {
+            font-size: 34px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .summary-meta {
+            display: grid;
+            gap: 6px;
+            color: var(--muted);
+            font-size: 13px;
+        }
+
+        .market-list {
+            display: grid;
+            gap: 10px;
+            padding: 0 16px 16px;
+        }
+
+        .market-item {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 10px;
+            align-items: center;
+            padding: 12px 14px;
+            border-radius: 14px;
+            background: rgba(16, 23, 32, 0.92);
+            border: 1px solid var(--line);
+        }
+
+        .market-item strong {
+            font-size: 14px;
+        }
+
+        .market-item span {
+            display: block;
+            color: var(--muted);
+            font-size: 12px;
+            margin-top: 3px;
+        }
+
+        .market-val {
+            text-align: right;
+            font-weight: 700;
+        }
+
+        .main-grid {
+            display: grid;
+            gap: 14px;
+        }
+
+        .toolbar {
+            display: grid;
+            grid-template-columns: 2fr repeat(4, 1fr);
+            gap: 10px;
+            padding: 14px;
+        }
+
+        .toolbar-tile,
+        .metric-card,
+        .analysis-card,
+        .event-card,
+        .terminal-output,
+        .chart-card {
+            border: 1px solid var(--line);
+            border-radius: 16px;
+            background: rgba(21, 33, 49, 0.92);
+        }
+
+        .toolbar-tile {
+            padding: 14px;
+        }
+
+        .toolbar-tile .k {
+            color: var(--muted);
+            font-size: 11px;
             text-transform: uppercase;
             letter-spacing: 0.05em;
         }
 
-        input, select {
-            background: rgba(15, 23, 42, 0.6);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 0.5rem;
-            padding: 0.75rem;
-            color: white;
-            font-size: 1rem;
-            outline: none;
-            transition: border-color 0.2s;
-        }
-
-        input:focus, select:focus {
-            border-color: var(--accent-blue);
-        }
-
-        .toggle-group {
-            display: flex;
-            background: rgba(15, 23, 42, 0.6);
-            border-radius: 0.5rem;
-            padding: 0.25rem;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-        }
-
-        .toggle-btn {
-            flex: 1;
-            padding: 0.5rem;
-            border: none;
-            background: transparent;
-            color: var(--text-secondary);
-            font-weight: 600;
-            font-size: 0.875rem;
-            cursor: pointer;
-            border-radius: 0.375rem;
-            transition: all 0.2s;
-        }
-
-        .toggle-btn.active {
-            background: var(--accent-blue);
-            color: white;
-        }
-
-        button.run-btn {
-            background: linear-gradient(135deg, #3b82f6, #2563eb);
-            color: white;
-            border: none;
-            border-radius: 0.5rem;
-            padding: 1rem;
+        .toolbar-tile .v {
+            margin-top: 8px;
+            font-size: 20px;
             font-weight: 700;
-            font-size: 1rem;
-            cursor: pointer;
-            margin-top: 1.5rem;
-            width: 100%;
-            transition: transform 0.1s, opacity 0.2s;
-            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
         }
 
-        button.run-btn:active {
-            transform: scale(0.98);
-        }
-
-        button.run-btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
-
-        .snapshot {
-            display: none;
-            margin-top: 1.5rem;
+        .signal-box {
+            padding: 14px 16px 0;
         }
 
         .status-badge {
-            display: inline-block;
-            padding: 0.5rem 1rem;
-            border-radius: 2rem;
-            font-weight: 700;
-            font-size: 0.875rem;
-            margin-bottom: 1rem;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 44px;
             width: 100%;
-            text-align: center;
-        }
-
-        .status-normal { background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.3); }
-        .status-fake { background: rgba(251, 146, 60, 0.2); color: #fb923c; border: 1px solid rgba(251, 146, 60, 0.3); }
-        .status-real { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
-        .status-bull { background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.3); }
-
-        .metrics-grid {
-            display: grid;
-            grid-template-columns: repeat(2, 1fr);
-            gap: 0.75rem;
-        }
-
-        @media (min-width: 640px) {
-            .metrics-grid {
-                grid-template-columns: repeat(4, 1fr);
-            }
-        }
-
-        .metric-card {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-            padding: 0.75rem;
-            border-radius: 0.75rem;
-        }
-
-        .metric-label {
-            font-size: 0.65rem;
-            color: var(--text-secondary);
-            margin-bottom: 0.25rem;
-            text-transform: uppercase;
-        }
-
-        .metric-value {
-            font-size: 1rem;
+            border-radius: 999px;
+            font-size: 13px;
             font-weight: 700;
-            font-family: monospace;
+            letter-spacing: 0.03em;
+            border: 1px solid transparent;
+        }
+
+        .status-normal,
+        .status-bull {
+            background: rgba(34, 197, 94, 0.14);
+            color: var(--green);
+            border-color: rgba(34, 197, 94, 0.28);
+        }
+
+        .status-fake {
+            background: rgba(245, 158, 11, 0.14);
+            color: var(--orange);
+            border-color: rgba(245, 158, 11, 0.28);
+        }
+
+        .status-real {
+            background: rgba(239, 68, 68, 0.14);
+            color: var(--red);
+            border-color: rgba(239, 68, 68, 0.28);
+        }
+
+        .chart-card {
+            padding: 10px;
         }
 
         #chart-container {
-            background: var(--card-bg);
-            border-radius: 1rem;
-            padding: 0.5rem;
-            margin-top: 1.5rem;
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            height: 600px;
-            width: 100%;
+            min-height: 860px;
+        }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(4, minmax(0, 1fr));
+            gap: 10px;
+        }
+
+        .metric-card {
+            padding: 14px;
+        }
+
+        .metric-label {
+            color: var(--muted);
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .metric-value {
+            margin-top: 8px;
+            font-size: 22px;
+            font-weight: 700;
+        }
+
+        .bottom-grid {
+            display: grid;
+            grid-template-columns: 1.2fr 0.8fr;
+            gap: 14px;
+        }
+
+        .analysis-card,
+        .event-card,
+        .terminal-output {
+            padding: 16px;
+        }
+
+        .analysis-card h2,
+        .event-card h2 {
+            margin: 0 0 12px;
+            font-size: 18px;
+        }
+
+        .analysis-summary {
+            color: #dce6f8;
+            line-height: 1.65;
+            margin: 0 0 12px;
+        }
+
+        .analysis-points,
+        .event-list {
+            margin: 0;
+            padding-left: 18px;
+            color: var(--muted);
+        }
+
+        .analysis-points li + li,
+        .event-list li + li {
+            margin-top: 8px;
+        }
+
+        .event-empty {
+            color: var(--muted);
+            font-size: 14px;
+        }
+
+        .news-list {
+            display: grid;
+            gap: 10px;
+            padding: 14px 16px 16px;
+        }
+
+        .news-card {
+            padding: 14px;
+            border-radius: 14px;
+            background: rgba(16, 23, 32, 0.92);
+            border: 1px solid var(--line);
+        }
+
+        .news-card strong {
+            display: block;
+            font-size: 14px;
+            line-height: 1.45;
+        }
+
+        .news-card span {
+            display: block;
+            margin-top: 6px;
+            color: var(--muted);
+            font-size: 12px;
         }
 
         .loader {
             display: none;
+            margin-top: 14px;
             text-align: center;
-            padding: 2rem;
+            color: var(--muted);
         }
 
         .spinner {
-            width: 40px;
-            height: 40px;
-            border: 4px solid rgba(255, 255, 255, 0.1);
-            border-top: 4px solid var(--accent-blue);
+            width: 34px;
+            height: 34px;
+            margin: 0 auto 10px;
             border-radius: 50%;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 1rem;
+            border: 3px solid rgba(255, 255, 255, 0.12);
+            border-top-color: var(--blue);
+            animation: spin 0.9s linear infinite;
         }
 
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
         .error-msg {
-            margin-top: 1rem;
-            padding: 0.75rem 1rem;
-            background: rgba(239, 68, 68, 0.1);
+            display: none;
+            margin-top: 14px;
+            padding: 14px 16px;
+            border-radius: 14px;
+            background: rgba(127, 29, 29, 0.28);
             color: #fecaca;
-            border: 1px solid rgba(248, 113, 113, 0.25);
-            border-radius: 0.75rem;
+            border: 1px solid rgba(248, 113, 113, 0.24);
+        }
+
+        .snapshot {
+            display: none;
+            gap: 14px;
         }
 
         .terminal-output {
-            margin-top: 1rem;
-            padding: 1rem;
-            background: rgba(15, 23, 42, 0.8);
-            border: 1px solid rgba(255, 255, 255, 0.08);
-            border-radius: 1rem;
-            color: #e2e8f0;
-            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
             white-space: pre-wrap;
-            max-height: 320px;
-            overflow-y: auto;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            color: #d7e5fa;
         }
 
         .terminal-output.hidden {
@@ -264,123 +461,251 @@
         }
 
         .terminal-output-title {
-            font-size: 0.95rem;
+            color: #bfdbfe;
             font-weight: 700;
-            margin-bottom: 0.75rem;
-            color: #93c5fd;
+            margin-bottom: 10px;
         }
-        .error-msg {
-            color: var(--accent-red);
-            background: rgba(239, 68, 68, 0.1);
-            padding: 1rem;
-            border-radius: 0.5rem;
-            margin-top: 1rem;
-            display: none;
-            font-size: 0.875rem;
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 1220px) {
+            .dashboard {
+                grid-template-columns: 1fr;
+            }
+
+            .toolbar,
+            .metrics-grid,
+            .bottom-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        @media (max-width: 760px) {
+            .container {
+                width: min(100% - 16px, 1440px);
+            }
+
+            .topbar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .toolbar,
+            .metrics-grid,
+            .bottom-grid {
+                grid-template-columns: 1fr;
+            }
+
+            #chart-container {
+                min-height: 720px;
+            }
         }
     </style>
 </head>
 <body>
     <div class="container">
-        <header>
-            <h1>STOCK QUANT TERMINAL</h1>
-        </header>
-
-        <div class="controls">
-            <div class="input-group" style="margin-bottom: 1.5rem;">
-                <label>Chế độ phân tích</label>
-                <div class="toggle-group">
-                    <button class="toggle-btn active" onclick="setMode('stock', this)">STOCK</button>
-                    <button class="toggle-btn" onclick="setMode('vnindex', this)">VN-INDEX</button>
-                </div>
+        <div class="topbar">
+            <div class="brand">
+                <h1>OpenClaw Market Dashboard</h1>
+                <p>Dashboard dạng ô cho phân tích định lượng, nến Nhật, tín hiệu và nhận định AI.</p>
             </div>
-
-            <div class="form-grid">
-                <div class="input-group" id="ticker-group">
-                    <label>Mã cổ phiếu</label>
-                    <input type="text" id="ticker" placeholder="HPG" value="HPG">
-                </div>
-                <div class="input-group">
-                    <label>Khung thời gian</label>
-                    <select id="interval">
-                        <option value="1D">Ngày (1D)</option>
-                        <option value="1H">Giờ (1H)</option>
-                        <option value="15m">15 phút (15m)</option>
-                    </select>
-                </div>
-                <div class="input-group">
-                    <label>Từ ngày</label>
-                    <input type="date" id="start_date">
-                </div>
-                <div class="input-group">
-                    <label>Đến ngày</label>
-                    <input type="date" id="end_date">
-                </div>
-            </div>
-
-            <button class="run-btn" id="run-btn" onclick="runAnalysis()">CHẠY PHÂN TÍCH ⚡</button>
+            <button class="run-btn" id="run-btn" onclick="runAnalysis()">Chạy phân tích</button>
         </div>
 
         <div class="loader" id="loader">
             <div class="spinner"></div>
-            <p>Đang xử lý dữ liệu định lượng...</p>
+            <div>Đang xử lý dữ liệu thị trường...</div>
         </div>
 
         <div class="error-msg" id="error-msg"></div>
 
-        <div class="snapshot" id="snapshot">
-            <div id="signal-badge" class="status-badge">NORMAL</div>
-            
-            <div class="metrics-grid">
-                <div class="metric-card">
-                    <div class="metric-label">Giá Close</div>
-                    <div class="metric-value" id="val-close">-</div>
-                </div>
-                <div class="metric-card">
-                    <div class="metric-label">Z-Score</div>
-                    <div class="metric-value" id="val-zscore">-</div>
-                </div>
-                <div class="metric-card">
-                    <div class="metric-label">ML Prob Up</div>
-                    <div class="metric-value" id="val-mlprob" style="color: #4ade80;">-</div>
-                </div>
-                <div class="metric-card">
-                    <div class="metric-label">Exp Value (EV)</div>
-                    <div class="metric-value" id="val-ev">-</div>
-                </div>
-                <div class="metric-card">
-                    <div class="metric-label">POC</div>
-                    <div class="metric-value" id="val-poc">-</div>
-                </div>
-                <div class="metric-card">
-                    <div class="metric-label">P-Value</div>
-                    <div class="metric-value" id="val-pvalue">-</div>
-                </div>
-                <div class="metric-card">
-                    <div class="metric-label">Roll Skew</div>
-                    <div class="metric-value" id="val-skew">-</div>
-                </div>
-                <div class="metric-card">
-                    <div class="metric-label">Gia tốc</div>
-                    <div class="metric-value" id="val-accel">-</div>
-                </div>
-            </div>
-
-            <div id="chart-container"></div>
-                    <div class="terminal-output hidden" id="terminal-output">
-                        <div class="terminal-output-title">Terminal Output</div>
-                        <div id="terminal-output-content">Chưa có kết quả.</div>
+        <div class="dashboard">
+            <aside class="panel">
+                <div class="panel-head">
+                    <div>
+                        <h2>Bộ lọc phân tích</h2>
+                        <div class="panel-sub">Chọn mã, khung thời gian và khoảng dữ liệu</div>
                     </div>
+                </div>
+
+                <div class="controls">
+                    <div class="toggle-group">
+                        <button class="toggle-btn active" onclick="setMode('stock', this)">STOCK</button>
+                        <button class="toggle-btn" onclick="setMode('vnindex', this)">VN-INDEX</button>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="input-group" id="ticker-group">
+                            <label>Mã cổ phiếu</label>
+                            <input type="text" id="ticker" value="HPG" placeholder="HPG">
+                        </div>
+                        <div class="input-group">
+                            <label>Khung thời gian</label>
+                            <select id="interval">
+                                <option value="1D">Ngày (1D)</option>
+                                <option value="1H">Giờ (1H)</option>
+                                <option value="15m">15 phút (15m)</option>
+                            </select>
+                        </div>
+                        <div class="input-group">
+                            <label>Từ ngày</label>
+                            <input type="date" id="start_date">
+                        </div>
+                        <div class="input-group">
+                            <label>Đến ngày</label>
+                            <input type="date" id="end_date">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="summary-box">
+                    <div class="summary-ticker">
+                        <strong id="summary-symbol">HPG</strong>
+                        <span id="summary-interval">1D</span>
+                    </div>
+                    <div class="summary-price" id="summary-close">-</div>
+                    <div class="summary-meta">
+                        <div>POC / VAH / VAL: <span id="summary-value-area">-</span></div>
+                        <div>Thời gian cập nhật: <span id="summary-time">-</span></div>
+                        <div>Xác suất tăng: <span id="summary-prob">-</span></div>
+                    </div>
+                </div>
+
+                <div class="market-list">
+                    <div class="market-item">
+                        <div>
+                            <strong>Tín hiệu hiện tại</strong>
+                            <span id="left-signal-text">Chưa có dữ liệu</span>
+                        </div>
+                        <div class="market-val" id="left-zscore">-</div>
+                    </div>
+                    <div class="market-item">
+                        <div>
+                            <strong>Độ lệch thống kê</strong>
+                            <span>Relative Z-Score và p-value</span>
+                        </div>
+                        <div class="market-val" id="left-relative">-</div>
+                    </div>
+                    <div class="market-item">
+                        <div>
+                            <strong>Gia tốc giá</strong>
+                            <span>Động lượng ngắn hạn</span>
+                        </div>
+                        <div class="market-val" id="left-accel">-</div>
+                    </div>
+                </div>
+            </aside>
+
+            <main class="main-grid">
+                <div class="panel snapshot" id="snapshot">
+                    <div class="signal-box">
+                        <div id="signal-badge" class="status-badge">NORMAL</div>
+                    </div>
+
+                    <div class="toolbar">
+                        <div class="toolbar-tile">
+                            <div class="k">Tổng quan</div>
+                            <div class="v" id="overview-text">-</div>
+                        </div>
+                        <div class="toolbar-tile">
+                            <div class="k">Close</div>
+                            <div class="v" id="val-close">-</div>
+                        </div>
+                        <div class="toolbar-tile">
+                            <div class="k">Z-Score</div>
+                            <div class="v" id="val-zscore">-</div>
+                        </div>
+                        <div class="toolbar-tile">
+                            <div class="k">ML Prob Up</div>
+                            <div class="v" id="val-mlprob">-</div>
+                        </div>
+                        <div class="toolbar-tile">
+                            <div class="k">EV</div>
+                            <div class="v" id="val-ev">-</div>
+                        </div>
+                    </div>
+
+                    <div class="chart-card">
+                        <div id="chart-container"></div>
+                    </div>
+
+                    <div class="metrics-grid">
+                        <div class="metric-card">
+                            <div class="metric-label">POC</div>
+                            <div class="metric-value" id="val-poc">-</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">P-Value</div>
+                            <div class="metric-value" id="val-pvalue">-</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">Roll Skew</div>
+                            <div class="metric-value" id="val-skew">-</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">Acceleration</div>
+                            <div class="metric-value" id="val-accel">-</div>
+                        </div>
+                    </div>
+
+                    <div class="bottom-grid">
+                        <div class="analysis-card">
+                            <h2 id="ai-title">AI Analysis</h2>
+                            <p class="analysis-summary" id="ai-summary">-</p>
+                            <ul class="analysis-points" id="ai-points"></ul>
+                        </div>
+
+                        <div class="event-card">
+                            <h2>Sự kiện tín hiệu</h2>
+                            <div class="event-empty" id="event-empty">Chưa có tín hiệu bất thường trong khoảng dữ liệu này.</div>
+                            <ul class="event-list" id="event-list"></ul>
+                        </div>
+                    </div>
+
+                    <div class="terminal-output hidden" id="terminal-output">
+                        <div class="terminal-output-title">System Output</div>
+                        <div id="terminal-output-content">Chưa có dữ liệu.</div>
+                    </div>
+                </div>
+            </main>
+
+            <aside class="panel">
+                <div class="panel-head">
+                    <div>
+                        <h3>Điểm nổi bật</h3>
+                        <div class="panel-sub">Tóm tắt nhanh từ chỉ báo và AI</div>
+                    </div>
+                </div>
+                <div class="news-list">
+                    <div class="news-card">
+                        <strong>Value Area</strong>
+                        <span id="news-value-area">Chưa có dữ liệu.</span>
+                    </div>
+                    <div class="news-card">
+                        <strong>Momentum</strong>
+                        <span id="news-momentum">Chưa có dữ liệu.</span>
+                    </div>
+                    <div class="news-card">
+                        <strong>Model View</strong>
+                        <span id="news-model">Chưa có dữ liệu.</span>
+                    </div>
+                    <div class="news-card">
+                        <strong>Rủi ro cần chú ý</strong>
+                        <span id="news-risk">Chưa có dữ liệu.</span>
+                    </div>
+                </div>
+            </aside>
+        </div>
     </div>
 
     <script>
         let currentMode = 'stock';
 
-        // Set default dates
         const today = new Date();
         const sixMonthsAgo = new Date();
         sixMonthsAgo.setMonth(today.getMonth() - 6);
-        
         document.getElementById('end_date').value = today.toISOString().split('T')[0];
         document.getElementById('start_date').value = sixMonthsAgo.toISOString().split('T')[0];
 
@@ -388,15 +713,75 @@
             currentMode = mode;
             document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
-            
+
             const tickerGroup = document.getElementById('ticker-group');
-            if (mode === 'vnindex') {
-                tickerGroup.style.opacity = '0.5';
-                tickerGroup.style.pointerEvents = 'none';
-            } else {
-                tickerGroup.style.opacity = '1';
-                tickerGroup.style.pointerEvents = 'all';
+            const disabled = mode === 'vnindex';
+            tickerGroup.style.opacity = disabled ? '0.45' : '1';
+            tickerGroup.style.pointerEvents = disabled ? 'none' : 'auto';
+        }
+
+        function setText(id, value, suffix = '') {
+            document.getElementById(id).textContent = value === null || value === undefined ? '-' : `${value}${suffix}`;
+        }
+
+        function splitAiSummary(summary = '') {
+            const parts = summary.split('. ').map(item => item.trim()).filter(Boolean);
+            return {
+                location: parts[0] || 'Chưa có dữ liệu.',
+                momentum: parts[1] || 'Chưa có dữ liệu.',
+                model: parts.slice(2).join('. ') || 'Chưa có dữ liệu.'
+            };
+        }
+
+        function renderAiAnalysis(ai) {
+            document.getElementById('ai-title').textContent = ai?.title || 'AI Analysis';
+            document.getElementById('ai-summary').textContent = ai?.summary || '-';
+
+            const list = document.getElementById('ai-points');
+            list.innerHTML = '';
+            (ai?.bullets || []).forEach(item => {
+                const li = document.createElement('li');
+                li.textContent = item;
+                list.appendChild(li);
+            });
+
+            const parts = splitAiSummary(ai?.summary || '');
+            document.getElementById('news-value-area').textContent = parts.location;
+            document.getElementById('news-momentum').textContent = parts.momentum;
+            document.getElementById('news-model').textContent = parts.model;
+            document.getElementById('news-risk').textContent = ai?.bullets?.[0] || 'Chưa có rủi ro nổi bật.';
+        }
+
+        function renderEvents(events = []) {
+            const empty = document.getElementById('event-empty');
+            const list = document.getElementById('event-list');
+            list.innerHTML = '';
+
+            if (!events.length) {
+                empty.style.display = 'block';
+                return;
             }
+
+            empty.style.display = 'none';
+            events.slice(-6).reverse().forEach(event => {
+                const li = document.createElement('li');
+                li.textContent = `${event.time} | ${event.signal} | Return ${event.return}%`;
+                list.appendChild(li);
+            });
+        }
+
+        function updateSidebarSummary(s) {
+            setText('summary-symbol', s.ticker);
+            setText('summary-interval', s.interval);
+            setText('summary-close', s.close);
+            document.getElementById('summary-value-area').textContent = `${s.poc} / ${s.vah} / ${s.val}`;
+            document.getElementById('summary-time').textContent = s.time || '-';
+            document.getElementById('summary-prob').textContent = s.prob_up ? `${s.prob_up}%` : '-';
+            document.getElementById('left-signal-text').textContent = s.signal || '-';
+            document.getElementById('left-zscore').textContent = s.z_score ?? '-';
+            document.getElementById('left-relative').textContent = s.rel_z_score ?? '-';
+            document.getElementById('left-accel').textContent = s.acceleration ?? '-';
+            document.getElementById('overview-text').textContent = `${s.ticker} | ${s.total_candles} nến`;
         }
 
         async function runAnalysis() {
@@ -404,7 +789,7 @@
             const interval = document.getElementById('interval').value;
             const start_date = document.getElementById('start_date').value;
             const end_date = document.getElementById('end_date').value;
-            
+
             const runBtn = document.getElementById('run-btn');
             const loader = document.getElementById('loader');
             const snapshot = document.getElementById('snapshot');
@@ -423,54 +808,51 @@
                 const response = await fetch('/api/analyze', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        mode: currentMode,
-                        ticker,
-                        interval,
-                        start_date,
-                        end_date
-                    })
+                    body: JSON.stringify({ mode: currentMode, ticker, interval, start_date, end_date })
                 });
 
-                const data = await response.json();
-
-                if (data.success) {
-                    const s = data.snapshot;
-                    
-                    // Update Metrics
-                    document.getElementById('val-close').textContent = s.close;
-                    document.getElementById('val-zscore').textContent = s.z_score;
-                    document.getElementById('val-mlprob').textContent = s.prob_up ? s.prob_up + '%' : '-';
-                    document.getElementById('val-ev').textContent = s.ev ? s.ev + '%' : '-';
-                    document.getElementById('val-poc').textContent = s.poc;
-                    document.getElementById('val-pvalue').textContent = s.p_value;
-                    document.getElementById('val-skew').textContent = s.roll_skew;
-                    document.getElementById('val-accel').textContent = s.acceleration;
-
-                    // Update Badge
-                    const badge = document.getElementById('signal-badge');
-                    badge.textContent = s.signal.toUpperCase();
-                    badge.className = 'status-badge status-' + s.signal_class;
-
-                    // Render Chart
-                    Plotly.newPlot('chart-container', data.chart.data, data.chart.layout, {
-                        responsive: true,
-                        displayModeBar: false
-                    });
-
-                    snapshot.style.display = 'block';
-                    outputContent.textContent = data.output || 'No terminal output captured.';
-                    outputArea.classList.remove('hidden');
-                } else {
-                    errorMsg.textContent = 'Lỗi: ' + data.error;
-                    errorMsg.style.display = 'block';
-                    outputContent.textContent = data.output || '';
-                    if (data.output) {
-                        outputArea.classList.remove('hidden');
-                    }
+                const rawText = await response.text();
+                let data;
+                try {
+                    data = JSON.parse(rawText);
+                } catch (parseError) {
+                    const serverMessage = rawText.trim().slice(0, 180) || 'Server khong tra ve JSON hop le.';
+                    throw new Error(`Server response khong hop le (${response.status}). ${serverMessage}`);
                 }
+
+                if (!data.success) {
+                    throw new Error(data.error || 'Phân tích thất bại');
+                }
+
+                const s = data.snapshot;
+                setText('val-close', s.close);
+                setText('val-zscore', s.z_score);
+                setText('val-poc', s.poc);
+                setText('val-pvalue', s.p_value);
+                setText('val-mlprob', s.prob_up, '%');
+                setText('val-ev', s.ev, '%');
+                setText('val-skew', s.roll_skew);
+                setText('val-accel', s.acceleration);
+
+                updateSidebarSummary(s);
+
+                const badge = document.getElementById('signal-badge');
+                badge.textContent = `${s.signal.toUpperCase()} | ${s.ticker} | ${s.time}`;
+                badge.className = 'status-badge status-' + s.signal_class;
+
+                renderAiAnalysis(data.ai_analysis);
+                renderEvents(s.events || []);
+
+                Plotly.newPlot('chart-container', data.chart.data, data.chart.layout, {
+                    responsive: true,
+                    displayModeBar: false
+                });
+
+                snapshot.style.display = 'grid';
+                outputContent.textContent = data.output || 'No output.';
+                outputArea.classList.remove('hidden');
             } catch (e) {
-                errorMsg.textContent = 'Lỗi kết nối Server: ' + e.message;
+                errorMsg.textContent = 'Lỗi: ' + e.message;
                 errorMsg.style.display = 'block';
             } finally {
                 runBtn.disabled = false;

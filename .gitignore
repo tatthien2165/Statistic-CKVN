@@ -39,3 +39,4 @@ Thumbs.db
 
 # Other
 *.sqlite3
+.cache_vnstock/

@@ -1,7 +1,9 @@
 import sys
 import os
+import tkinter as tk
+from tkinter import ttk, messagebox
 import matplotlib
-matplotlib.use('Agg')
+matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 from matplotlib.gridspec import GridSpec
 import pandas as pd
@@ -495,9 +497,6 @@ class StockAppGUI:
     }
 
     def __init__(self, root):
-        import tkinter as tk
-        from tkinter import ttk, messagebox
-        
         self.root = root
         self.root.title("Stock Quant Anomaly Detector")
         self.root.geometry("500x400")
