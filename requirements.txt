@@ -1,0 +1,9 @@
+flask
+flask-cors
+pandas
+numpy
+scipy
+scikit-learn
+plotly
+vnstock
+gunicorn

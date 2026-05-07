@@ -1,0 +1,437 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Quant Anomaly Detector</title>
+    <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0f172a;
+            --card-bg: rgba(30, 41, 59, 0.7);
+            --text-primary: #f8fafc;
+            --text-secondary: #94a3b8;
+            --accent-blue: #3b82f6;
+            --accent-green: #22c55e;
+            --accent-red: #ef4444;
+            --accent-orange: #fb923c;
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-primary);
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.05) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(34, 197, 94, 0.05) 0%, transparent 40%);
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 1rem;
+        }
+
+        header {
+            padding: 1.5rem 0;
+            text-align: center;
+        }
+
+        h1 {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 0;
+            background: linear-gradient(to right, #60a5fa, #34d399);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .controls {
+            background: var(--card-bg);
+            backdrop-filter: blur(12px);
+            border-radius: 1rem;
+            padding: 1.25rem;
+            margin-bottom: 1.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+        }
+
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+
+        @media (min-width: 640px) {
+            .form-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.4rem;
+        }
+
+        label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        input, select {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 0.5rem;
+            padding: 0.75rem;
+            color: white;
+            font-size: 1rem;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        input:focus, select:focus {
+            border-color: var(--accent-blue);
+        }
+
+        .toggle-group {
+            display: flex;
+            background: rgba(15, 23, 42, 0.6);
+            border-radius: 0.5rem;
+            padding: 0.25rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+
+        .toggle-btn {
+            flex: 1;
+            padding: 0.5rem;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            font-weight: 600;
+            font-size: 0.875rem;
+            cursor: pointer;
+            border-radius: 0.375rem;
+            transition: all 0.2s;
+        }
+
+        .toggle-btn.active {
+            background: var(--accent-blue);
+            color: white;
+        }
+
+        button.run-btn {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: white;
+            border: none;
+            border-radius: 0.5rem;
+            padding: 1rem;
+            font-weight: 700;
+            font-size: 1rem;
+            cursor: pointer;
+            margin-top: 1.5rem;
+            width: 100%;
+            transition: transform 0.1s, opacity 0.2s;
+            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.3);
+        }
+
+        button.run-btn:active {
+            transform: scale(0.98);
+        }
+
+        button.run-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .snapshot {
+            display: none;
+            margin-top: 1.5rem;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            border-radius: 2rem;
+            font-weight: 700;
+            font-size: 0.875rem;
+            margin-bottom: 1rem;
+            width: 100%;
+            text-align: center;
+        }
+
+        .status-normal { background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.3); }
+        .status-fake { background: rgba(251, 146, 60, 0.2); color: #fb923c; border: 1px solid rgba(251, 146, 60, 0.3); }
+        .status-real { background: rgba(239, 68, 68, 0.2); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+        .status-bull { background: rgba(34, 197, 94, 0.2); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.3); }
+
+        .metrics-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.75rem;
+        }
+
+        @media (min-width: 640px) {
+            .metrics-grid {
+                grid-template-columns: repeat(4, 1fr);
+            }
+        }
+
+        .metric-card {
+            background: rgba(255, 255, 255, 0.03);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            padding: 0.75rem;
+            border-radius: 0.75rem;
+        }
+
+        .metric-label {
+            font-size: 0.65rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.25rem;
+            text-transform: uppercase;
+        }
+
+        .metric-value {
+            font-size: 1rem;
+            font-weight: 700;
+            font-family: monospace;
+        }
+
+        #chart-container {
+            background: var(--card-bg);
+            border-radius: 1rem;
+            padding: 0.5rem;
+            margin-top: 1.5rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            height: 600px;
+            width: 100%;
+        }
+
+        .loader {
+            display: none;
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-top: 4px solid var(--accent-blue);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 1rem;
+        }
+
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        .error-msg {
+            color: var(--accent-red);
+            background: rgba(239, 68, 68, 0.1);
+            padding: 1rem;
+            border-radius: 0.5rem;
+            margin-top: 1rem;
+            display: none;
+            font-size: 0.875rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>STOCK QUANT TERMINAL</h1>
+        </header>
+
+        <div class="controls">
+            <div class="input-group" style="margin-bottom: 1.5rem;">
+                <label>Chế độ phân tích</label>
+                <div class="toggle-group">
+                    <button class="toggle-btn active" onclick="setMode('stock', this)">STOCK</button>
+                    <button class="toggle-btn" onclick="setMode('vnindex', this)">VN-INDEX</button>
+                </div>
+            </div>
+
+            <div class="form-grid">
+                <div class="input-group" id="ticker-group">
+                    <label>Mã cổ phiếu</label>
+                    <input type="text" id="ticker" placeholder="HPG" value="HPG">
+                </div>
+                <div class="input-group">
+                    <label>Khung thời gian</label>
+                    <select id="interval">
+                        <option value="1D">Ngày (1D)</option>
+                        <option value="1H">Giờ (1H)</option>
+                        <option value="15m">15 phút (15m)</option>
+                    </select>
+                </div>
+                <div class="input-group">
+                    <label>Từ ngày</label>
+                    <input type="date" id="start_date">
+                </div>
+                <div class="input-group">
+                    <label>Đến ngày</label>
+                    <input type="date" id="end_date">
+                </div>
+            </div>
+
+            <button class="run-btn" id="run-btn" onclick="runAnalysis()">CHẠY PHÂN TÍCH ⚡</button>
+        </div>
+
+        <div class="loader" id="loader">
+            <div class="spinner"></div>
+            <p>Đang xử lý dữ liệu định lượng...</p>
+        </div>
+
+        <div class="error-msg" id="error-msg"></div>
+
+        <div class="snapshot" id="snapshot">
+            <div id="signal-badge" class="status-badge">NORMAL</div>
+            
+            <div class="metrics-grid">
+                <div class="metric-card">
+                    <div class="metric-label">Giá Close</div>
+                    <div class="metric-value" id="val-close">-</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Z-Score</div>
+                    <div class="metric-value" id="val-zscore">-</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">ML Prob Up</div>
+                    <div class="metric-value" id="val-mlprob" style="color: #4ade80;">-</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Exp Value (EV)</div>
+                    <div class="metric-value" id="val-ev">-</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">POC</div>
+                    <div class="metric-value" id="val-poc">-</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">P-Value</div>
+                    <div class="metric-value" id="val-pvalue">-</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Roll Skew</div>
+                    <div class="metric-value" id="val-skew">-</div>
+                </div>
+                <div class="metric-card">
+                    <div class="metric-label">Gia tốc</div>
+                    <div class="metric-value" id="val-accel">-</div>
+                </div>
+            </div>
+
+            <div id="chart-container"></div>
+        </div>
+    </div>
+
+    <script>
+        let currentMode = 'stock';
+
+        // Set default dates
+        const today = new Date();
+        const sixMonthsAgo = new Date();
+        sixMonthsAgo.setMonth(today.getMonth() - 6);
+        
+        document.getElementById('end_date').value = today.toISOString().split('T')[0];
+        document.getElementById('start_date').value = sixMonthsAgo.toISOString().split('T')[0];
+
+        function setMode(mode, btn) {
+            currentMode = mode;
+            document.querySelectorAll('.toggle-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            
+            const tickerGroup = document.getElementById('ticker-group');
+            if (mode === 'vnindex') {
+                tickerGroup.style.opacity = '0.5';
+                tickerGroup.style.pointerEvents = 'none';
+            } else {
+                tickerGroup.style.opacity = '1';
+                tickerGroup.style.pointerEvents = 'all';
+            }
+        }
+
+        async function runAnalysis() {
+            const ticker = document.getElementById('ticker').value;
+            const interval = document.getElementById('interval').value;
+            const start_date = document.getElementById('start_date').value;
+            const end_date = document.getElementById('end_date').value;
+            
+            const runBtn = document.getElementById('run-btn');
+            const loader = document.getElementById('loader');
+            const snapshot = document.getElementById('snapshot');
+            const errorMsg = document.getElementById('error-msg');
+
+            runBtn.disabled = true;
+            loader.style.display = 'block';
+            snapshot.style.display = 'none';
+            errorMsg.style.display = 'none';
+
+            try {
+                const response = await fetch('/api/analyze', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        mode: currentMode,
+                        ticker,
+                        interval,
+                        start_date,
+                        end_date
+                    })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    const s = data.snapshot;
+                    
+                    // Update Metrics
+                    document.getElementById('val-close').textContent = s.close;
+                    document.getElementById('val-zscore').textContent = s.z_score;
+                    document.getElementById('val-mlprob').textContent = s.prob_up ? s.prob_up + '%' : '-';
+                    document.getElementById('val-ev').textContent = s.ev ? s.ev + '%' : '-';
+                    document.getElementById('val-poc').textContent = s.poc;
+                    document.getElementById('val-pvalue').textContent = s.p_value;
+                    document.getElementById('val-skew').textContent = s.roll_skew;
+                    document.getElementById('val-accel').textContent = s.acceleration;
+
+                    // Update Badge
+                    const badge = document.getElementById('signal-badge');
+                    badge.textContent = s.signal.toUpperCase();
+                    badge.className = 'status-badge status-' + s.signal_class;
+
+                    // Render Chart
+                    Plotly.newPlot('chart-container', data.chart.data, data.chart.layout, {
+                        responsive: true,
+                        displayModeBar: false
+                    });
+
+                    snapshot.style.display = 'block';
+                } else {
+                    errorMsg.textContent = 'Lỗi: ' + data.error;
+                    errorMsg.style.display = 'block';
+                }
+            } catch (e) {
+                errorMsg.textContent = 'Lỗi kết nối Server: ' + e.message;
+                errorMsg.style.display = 'block';
+            } finally {
+                runBtn.disabled = false;
+                loader.style.display = 'none';
+            }
+        }
+    </script>
+</body>
+</html>
