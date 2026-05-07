@@ -6,7 +6,9 @@ import json
 import logging
 import os
 import pickle
+import types
 import time
+import sys
 
 os.environ.setdefault('MPLCONFIGDIR', '/tmp/matplotlib')
 
@@ -202,6 +204,25 @@ CACHE_DIR = '.cache_vnstock'
 CACHE_TTL_SECONDS = 900
 
 
+def patch_vnstock_visual_modules():
+    if 'vnstock.common.viz' not in sys.modules:
+        dummy_viz = types.ModuleType('vnstock.common.viz')
+
+        class DummyChart:
+            def __init__(self, *args, **kwargs):
+                self.args = args
+                self.kwargs = kwargs
+
+        dummy_viz.Chart = DummyChart
+        sys.modules['vnstock.common.viz'] = dummy_viz
+
+    if 'vnstock_ezchart' not in sys.modules:
+        sys.modules['vnstock_ezchart'] = types.ModuleType('vnstock_ezchart')
+
+    if 'vnstock_chart' not in sys.modules:
+        sys.modules['vnstock_chart'] = types.ModuleType('vnstock_chart')
+
+
 def ensure_cache_dir():
     os.makedirs(CACHE_DIR, exist_ok=True)
 
@@ -266,6 +287,7 @@ def normalize_quote_frame(df, interval):
 
 
 def fetch_stock_data(ticker, start_date, end_date, interval):
+    patch_vnstock_visual_modules()
     from vnstock import Quote
 
     errors = []
@@ -292,6 +314,7 @@ def fetch_stock_data(ticker, start_date, end_date, interval):
 
 
 def fetch_vnindex_data(start_date, end_date, interval):
+    patch_vnstock_visual_modules()
     from vnstock import Quote
 
     errors = []
