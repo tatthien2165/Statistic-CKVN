@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OpenClaw Quant Dashboard</title>
+    <title>OpenClaw Market Dashboard</title>
     <script src="https://cdn.plot.ly/plotly-2.27.0.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
@@ -257,7 +257,7 @@
         }
 
         .toolbar-tile,
-        .metric-card,
+        .indicators-card,
         .analysis-card,
         .event-card,
         .terminal-output,
@@ -325,30 +325,72 @@
         }
 
         #chart-container {
-            min-height: 860px;
+            min-height: 1100px;
         }
 
-        .metrics-grid {
+        .indicators-card {
+            padding: 16px;
+        }
+
+        .indicators-card h2 {
+            margin: 0 0 14px;
+            font-size: 18px;
+        }
+
+        .indicator-grid {
             display: grid;
-            grid-template-columns: repeat(4, minmax(0, 1fr));
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+            gap: 10px 18px;
+        }
+
+        .indicator-row {
+            display: flex;
+            justify-content: space-between;
             gap: 10px;
+            padding-bottom: 8px;
+            border-bottom: 1px dashed rgba(255,255,255,0.08);
         }
 
-        .metric-card {
-            padding: 14px;
-        }
-
-        .metric-label {
+        .indicator-label {
             color: var(--muted);
-            font-size: 11px;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
+            font-size: 12px;
         }
 
-        .metric-value {
-            margin-top: 8px;
+        .indicator-value {
+            font-weight: 700;
+            text-align: right;
+        }
+
+        .recommend-card {
+            margin-top: 14px;
+            padding: 14px;
+            border-radius: 14px;
+            background: rgba(12, 20, 31, 0.88);
+            border: 1px solid var(--line);
+        }
+
+        .recommend-title {
+            display: flex;
+            justify-content: space-between;
+            gap: 12px;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+
+        .recommend-action {
             font-size: 22px;
             font-weight: 700;
+        }
+
+        .recommend-buy { color: var(--green); }
+        .recommend-sell { color: var(--red); }
+        .recommend-hold { color: var(--orange); }
+
+        .recommend-reason,
+        .recommend-note {
+            color: var(--muted);
+            font-size: 13px;
+            line-height: 1.55;
         }
 
         .bottom-grid {
@@ -476,7 +518,7 @@
             }
 
             .toolbar,
-            .metrics-grid,
+            .indicator-grid,
             .bottom-grid {
                 grid-template-columns: 1fr 1fr;
             }
@@ -493,13 +535,13 @@
             }
 
             .toolbar,
-            .metrics-grid,
+            .indicator-grid,
             .bottom-grid {
                 grid-template-columns: 1fr;
             }
 
             #chart-container {
-                min-height: 720px;
+                min-height: 860px;
             }
         }
     </style>
@@ -509,14 +551,14 @@
         <div class="topbar">
             <div class="brand">
                 <h1>OpenClaw Market Dashboard</h1>
-                <p>Dashboard dạng ô cho phân tích định lượng, nến Nhật, tín hiệu và nhận định AI.</p>
+                <p>Bang dieu khien dinh luong voi nen Nhat, gia toc, skew va ket luan AI mua/ban.</p>
             </div>
-            <button class="run-btn" id="run-btn" onclick="runAnalysis()">Chạy phân tích</button>
+            <button class="run-btn" id="run-btn" onclick="runAnalysis()">Chay phan tich</button>
         </div>
 
         <div class="loader" id="loader">
             <div class="spinner"></div>
-            <div>Đang xử lý dữ liệu thị trường...</div>
+            <div>Dang xu ly du lieu thi truong...</div>
         </div>
 
         <div class="error-msg" id="error-msg"></div>
@@ -525,8 +567,8 @@
             <aside class="panel">
                 <div class="panel-head">
                     <div>
-                        <h2>Bộ lọc phân tích</h2>
-                        <div class="panel-sub">Chọn mã, khung thời gian và khoảng dữ liệu</div>
+                        <h2>Bo loc phan tich</h2>
+                        <div class="panel-sub">Chon ma, khung thoi gian va khoang du lieu</div>
                     </div>
                 </div>
 
@@ -538,23 +580,23 @@
 
                     <div class="form-grid">
                         <div class="input-group" id="ticker-group">
-                            <label>Mã cổ phiếu</label>
+                            <label>Ma co phieu</label>
                             <input type="text" id="ticker" value="HPG" placeholder="HPG">
                         </div>
                         <div class="input-group">
-                            <label>Khung thời gian</label>
+                            <label>Khung thoi gian</label>
                             <select id="interval">
-                                <option value="1D">Ngày (1D)</option>
-                                <option value="1H">Giờ (1H)</option>
-                                <option value="15m">15 phút (15m)</option>
+                                <option value="1D">Ngay (1D)</option>
+                                <option value="1H">Gio (1H)</option>
+                                <option value="15m">15 phut (15m)</option>
                             </select>
                         </div>
                         <div class="input-group">
-                            <label>Từ ngày</label>
+                            <label>Tu ngay</label>
                             <input type="date" id="start_date">
                         </div>
                         <div class="input-group">
-                            <label>Đến ngày</label>
+                            <label>Den ngay</label>
                             <input type="date" id="end_date">
                         </div>
                     </div>
@@ -568,30 +610,30 @@
                     <div class="summary-price" id="summary-close">-</div>
                     <div class="summary-meta">
                         <div>POC / VAH / VAL: <span id="summary-value-area">-</span></div>
-                        <div>Thời gian cập nhật: <span id="summary-time">-</span></div>
-                        <div>Xác suất tăng: <span id="summary-prob">-</span></div>
+                        <div>Thoi gian cap nhat: <span id="summary-time">-</span></div>
+                        <div>Xac suat tang: <span id="summary-prob">-</span></div>
                     </div>
                 </div>
 
                 <div class="market-list">
                     <div class="market-item">
                         <div>
-                            <strong>Tín hiệu hiện tại</strong>
-                            <span id="left-signal-text">Chưa có dữ liệu</span>
+                            <strong>Tin hieu hien tai</strong>
+                            <span id="left-signal-text">Chua co du lieu</span>
                         </div>
                         <div class="market-val" id="left-zscore">-</div>
                     </div>
                     <div class="market-item">
                         <div>
-                            <strong>Độ lệch thống kê</strong>
-                            <span>Relative Z-Score và p-value</span>
+                            <strong>Do lech thong ke</strong>
+                            <span>Relative Z-Score va p-value</span>
                         </div>
                         <div class="market-val" id="left-relative">-</div>
                     </div>
                     <div class="market-item">
                         <div>
-                            <strong>Gia tốc giá</strong>
-                            <span>Động lượng ngắn hạn</span>
+                            <strong>Gia toc gia</strong>
+                            <span>Dong luong ngan han</span>
                         </div>
                         <div class="market-val" id="left-accel">-</div>
                     </div>
@@ -606,7 +648,7 @@
 
                     <div class="toolbar">
                         <div class="toolbar-tile">
-                            <div class="k">Tổng quan</div>
+                            <div class="k">Tong quan</div>
                             <div class="v" id="overview-text">-</div>
                         </div>
                         <div class="toolbar-tile">
@@ -631,22 +673,25 @@
                         <div id="chart-container"></div>
                     </div>
 
-                    <div class="metrics-grid">
-                        <div class="metric-card">
-                            <div class="metric-label">POC</div>
-                            <div class="metric-value" id="val-poc">-</div>
+                    <div class="indicators-card">
+                        <h2>Tong hop chi so</h2>
+                        <div class="indicator-grid">
+                            <div class="indicator-row"><span class="indicator-label">POC</span><span class="indicator-value" id="val-poc">-</span></div>
+                            <div class="indicator-row"><span class="indicator-label">P-Value</span><span class="indicator-value" id="val-pvalue">-</span></div>
+                            <div class="indicator-row"><span class="indicator-label">Roll Skew</span><span class="indicator-value" id="val-skew">-</span></div>
+                            <div class="indicator-row"><span class="indicator-label">Acceleration</span><span class="indicator-value" id="val-accel">-</span></div>
+                            <div class="indicator-row"><span class="indicator-label">Relative Z-Score</span><span class="indicator-value" id="val-rel-zscore">-</span></div>
+                            <div class="indicator-row"><span class="indicator-label">Mean / Std</span><span class="indicator-value" id="val-mean-std">-</span></div>
+                            <div class="indicator-row"><span class="indicator-label">Total Skew</span><span class="indicator-value" id="val-total-skew">-</span></div>
+                            <div class="indicator-row"><span class="indicator-label">ML Accuracy</span><span class="indicator-value" id="val-ml-acc">-</span></div>
                         </div>
-                        <div class="metric-card">
-                            <div class="metric-label">P-Value</div>
-                            <div class="metric-value" id="val-pvalue">-</div>
-                        </div>
-                        <div class="metric-card">
-                            <div class="metric-label">Roll Skew</div>
-                            <div class="metric-value" id="val-skew">-</div>
-                        </div>
-                        <div class="metric-card">
-                            <div class="metric-label">Acceleration</div>
-                            <div class="metric-value" id="val-accel">-</div>
+                        <div class="recommend-card">
+                            <div class="recommend-title">
+                                <strong>Ket luan AI</strong>
+                                <span class="recommend-action recommend-hold" id="recommend-action">HOLD</span>
+                            </div>
+                            <div class="recommend-reason" id="recommend-reason">Chua co du lieu.</div>
+                            <div class="recommend-note" id="recommend-note">Chi la goc nhin dinh luong tu AI.</div>
                         </div>
                     </div>
 
@@ -658,15 +703,15 @@
                         </div>
 
                         <div class="event-card">
-                            <h2>Sự kiện tín hiệu</h2>
-                            <div class="event-empty" id="event-empty">Chưa có tín hiệu bất thường trong khoảng dữ liệu này.</div>
+                            <h2>Su kien tin hieu</h2>
+                            <div class="event-empty" id="event-empty">Chua co tin hieu bat thuong trong khoang du lieu nay.</div>
                             <ul class="event-list" id="event-list"></ul>
                         </div>
                     </div>
 
                     <div class="terminal-output hidden" id="terminal-output">
                         <div class="terminal-output-title">System Output</div>
-                        <div id="terminal-output-content">Chưa có dữ liệu.</div>
+                        <div id="terminal-output-content">Chua co du lieu.</div>
                     </div>
                 </div>
             </main>
@@ -674,26 +719,26 @@
             <aside class="panel">
                 <div class="panel-head">
                     <div>
-                        <h3>Điểm nổi bật</h3>
-                        <div class="panel-sub">Tóm tắt nhanh từ chỉ báo và AI</div>
+                        <h3>Diem noi bat</h3>
+                        <div class="panel-sub">Tom tat nhanh tu chi bao va AI</div>
                     </div>
                 </div>
                 <div class="news-list">
                     <div class="news-card">
                         <strong>Value Area</strong>
-                        <span id="news-value-area">Chưa có dữ liệu.</span>
+                        <span id="news-value-area">Chua co du lieu.</span>
                     </div>
                     <div class="news-card">
                         <strong>Momentum</strong>
-                        <span id="news-momentum">Chưa có dữ liệu.</span>
+                        <span id="news-momentum">Chua co du lieu.</span>
                     </div>
                     <div class="news-card">
                         <strong>Model View</strong>
-                        <span id="news-model">Chưa có dữ liệu.</span>
+                        <span id="news-model">Chua co du lieu.</span>
                     </div>
                     <div class="news-card">
-                        <strong>Rủi ro cần chú ý</strong>
-                        <span id="news-risk">Chưa có dữ liệu.</span>
+                        <strong>Rui ro can chu y</strong>
+                        <span id="news-risk">Chua co du lieu.</span>
                     </div>
                 </div>
             </aside>
@@ -727,9 +772,9 @@
         function splitAiSummary(summary = '') {
             const parts = summary.split('. ').map(item => item.trim()).filter(Boolean);
             return {
-                location: parts[0] || 'Chưa có dữ liệu.',
-                momentum: parts[1] || 'Chưa có dữ liệu.',
-                model: parts.slice(2).join('. ') || 'Chưa có dữ liệu.'
+                location: parts[0] || 'Chua co du lieu.',
+                momentum: parts[1] || 'Chua co du lieu.',
+                model: parts.slice(2).join('. ') || 'Chua co du lieu.'
             };
         }
 
@@ -749,7 +794,17 @@
             document.getElementById('news-value-area').textContent = parts.location;
             document.getElementById('news-momentum').textContent = parts.momentum;
             document.getElementById('news-model').textContent = parts.model;
-            document.getElementById('news-risk').textContent = ai?.bullets?.[0] || 'Chưa có rủi ro nổi bật.';
+            document.getElementById('news-risk').textContent = ai?.bullets?.[0] || 'Chua co rui ro noi bat.';
+
+            const action = ai?.recommendation?.action || 'HOLD';
+            const actionNode = document.getElementById('recommend-action');
+            actionNode.textContent = action;
+            actionNode.className = 'recommend-action ' + (
+                action === 'BUY' ? 'recommend-buy' :
+                action === 'SELL' ? 'recommend-sell' : 'recommend-hold'
+            );
+            document.getElementById('recommend-reason').textContent = ai?.recommendation?.reason || '-';
+            document.getElementById('recommend-note').textContent = ai?.recommendation?.disclaimer || '-';
         }
 
         function renderEvents(events = []) {
@@ -781,7 +836,7 @@
             document.getElementById('left-zscore').textContent = s.z_score ?? '-';
             document.getElementById('left-relative').textContent = s.rel_z_score ?? '-';
             document.getElementById('left-accel').textContent = s.acceleration ?? '-';
-            document.getElementById('overview-text').textContent = `${s.ticker} | ${s.total_candles} nến`;
+            document.getElementById('overview-text').textContent = `${s.ticker} | ${s.total_candles} nen`;
         }
 
         async function runAnalysis() {
@@ -821,7 +876,7 @@
                 }
 
                 if (!data.success) {
-                    throw new Error(data.error || 'Phân tích thất bại');
+                    throw new Error(data.error || 'Phan tich that bai');
                 }
 
                 const s = data.snapshot;
@@ -833,6 +888,10 @@
                 setText('val-ev', s.ev, '%');
                 setText('val-skew', s.roll_skew);
                 setText('val-accel', s.acceleration);
+                setText('val-rel-zscore', s.rel_z_score);
+                setText('val-mean-std', `${s.mean_close} / ${s.std_close}`);
+                setText('val-total-skew', s.skew);
+                setText('val-ml-acc', s.ml_acc, '%');
 
                 updateSidebarSummary(s);
 
@@ -852,7 +911,7 @@
                 outputContent.textContent = data.output || 'No output.';
                 outputArea.classList.remove('hidden');
             } catch (e) {
-                errorMsg.textContent = 'Lỗi: ' + e.message;
+                errorMsg.textContent = 'Loi: ' + e.message;
                 errorMsg.style.display = 'block';
             } finally {
                 runBtn.disabled = false;

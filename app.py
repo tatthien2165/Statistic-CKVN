@@ -9,6 +9,8 @@ import pickle
 import types
 import time
 import sys
+import urllib.error
+import urllib.request
 
 os.environ.setdefault('MPLCONFIGDIR', '/tmp/matplotlib')
 
@@ -202,6 +204,9 @@ MAX_FETCH_ROWS = {
 }
 CACHE_DIR = '.cache_vnstock'
 CACHE_TTL_SECONDS = 900
+GITHUB_MODELS_ENDPOINT = 'https://models.github.ai/inference/chat/completions'
+GITHUB_MODELS_API_VERSION = '2022-11-28'
+GITHUB_MODELS_NAME = os.getenv('GITHUB_MODELS_NAME', 'openai/gpt-4o-mini')
 
 
 def patch_vnstock_visual_modules():
@@ -364,6 +369,9 @@ def build_plotly_figure(df, poc, vah, val, ticker, interval):
     time_fmt = '%Y-%m-%d %H:%M' if interval != '1D' else '%Y-%m-%d'
     x_values = df.index.strftime(time_fmt).tolist()
     volume_colors = np.where(df['Close'] >= df['Open'], '#22c55e', '#ef4444').tolist()
+    accel_values = df['Acceleration'].astype(float).fillna(0).tolist()
+    accel_colors = ['#22c55e' if v >= 0 else '#ef4444' for v in accel_values]
+    skew_values = df['Rolling_Skew'].astype(float).fillna(0).tolist()
     traces = [
         {
             'type': 'candlestick',
@@ -410,6 +418,28 @@ def build_plotly_figure(df, poc, vah, val, ticker, interval):
             'fill': 'tozeroy',
             'fillcolor': 'rgba(167,139,250,0.10)',
         },
+        {
+            'type': 'bar',
+            'x': x_values,
+            'y': accel_values,
+            'name': 'Acceleration',
+            'xaxis': 'x4',
+            'yaxis': 'y4',
+            'marker': {'color': accel_colors},
+            'opacity': 0.8,
+        },
+        {
+            'type': 'scatter',
+            'x': x_values,
+            'y': skew_values,
+            'mode': 'lines',
+            'name': 'Rolling Skew',
+            'xaxis': 'x5',
+            'yaxis': 'y5',
+            'line': {'color': '#f59e0b', 'width': 1.5},
+            'fill': 'tozeroy',
+            'fillcolor': 'rgba(245,158,11,0.08)',
+        },
     ]
 
     for sig, color, sym, name in [
@@ -436,18 +466,24 @@ def build_plotly_figure(df, poc, vah, val, ticker, interval):
         'font': {'family': 'Inter, sans-serif', 'color': '#e2e8f0'},
         'legend': {'orientation': 'h', 'yanchor': 'bottom', 'y': 1.02, 'xanchor': 'left', 'x': 0},
         'margin': {'l': 30, 'r': 20, 't': 70, 'b': 30},
-        'height': 820,
+        'height': 1080,
         'showlegend': True,
         'xaxis': {'domain': [0, 1], 'anchor': 'y', 'showgrid': True, 'gridcolor': 'rgba(255,255,255,0.05)', 'rangeslider': {'visible': False}},
-        'yaxis': {'domain': [0.40, 1.0], 'anchor': 'x', 'title': {'text': 'Price'}, 'showgrid': True, 'gridcolor': 'rgba(255,255,255,0.05)'},
+        'yaxis': {'domain': [0.56, 1.0], 'anchor': 'x', 'title': {'text': 'Price'}, 'showgrid': True, 'gridcolor': 'rgba(255,255,255,0.05)'},
         'xaxis2': {'domain': [0, 1], 'anchor': 'y2', 'showgrid': True, 'gridcolor': 'rgba(255,255,255,0.05)'},
-        'yaxis2': {'domain': [0.24, 0.37], 'anchor': 'x2', 'title': {'text': 'Volume'}, 'showgrid': True, 'gridcolor': 'rgba(255,255,255,0.05)'},
+        'yaxis2': {'domain': [0.43, 0.53], 'anchor': 'x2', 'title': {'text': 'Volume'}, 'showgrid': True, 'gridcolor': 'rgba(255,255,255,0.05)'},
         'xaxis3': {'domain': [0, 1], 'anchor': 'y3', 'showgrid': True, 'gridcolor': 'rgba(255,255,255,0.05)'},
-        'yaxis3': {'domain': [0.0, 0.19], 'anchor': 'x3', 'title': {'text': 'Z-Score'}, 'showgrid': True, 'gridcolor': 'rgba(255,255,255,0.05)'},
+        'yaxis3': {'domain': [0.28, 0.40], 'anchor': 'x3', 'title': {'text': 'Z-Score'}, 'showgrid': True, 'gridcolor': 'rgba(255,255,255,0.05)'},
+        'xaxis4': {'domain': [0, 1], 'anchor': 'y4', 'showgrid': True, 'gridcolor': 'rgba(255,255,255,0.05)'},
+        'yaxis4': {'domain': [0.14, 0.25], 'anchor': 'x4', 'title': {'text': 'Acceleration'}, 'showgrid': True, 'gridcolor': 'rgba(255,255,255,0.05)'},
+        'xaxis5': {'domain': [0, 1], 'anchor': 'y5', 'showgrid': True, 'gridcolor': 'rgba(255,255,255,0.05)'},
+        'yaxis5': {'domain': [0.0, 0.11], 'anchor': 'x5', 'title': {'text': 'Skew'}, 'showgrid': True, 'gridcolor': 'rgba(255,255,255,0.05)'},
         'annotations': [
             {'text': f'{ticker} - Candlestick & Signals ({interval})', 'xref': 'paper', 'yref': 'paper', 'x': 0, 'y': 1.08, 'showarrow': False, 'font': {'size': 16}},
-            {'text': 'Volume', 'xref': 'paper', 'yref': 'paper', 'x': 0, 'y': 0.39, 'showarrow': False, 'font': {'size': 12}},
-            {'text': 'Z-Score Monitor', 'xref': 'paper', 'yref': 'paper', 'x': 0, 'y': 0.21, 'showarrow': False, 'font': {'size': 12}},
+            {'text': 'Volume', 'xref': 'paper', 'yref': 'paper', 'x': 0, 'y': 0.55, 'showarrow': False, 'font': {'size': 12}},
+            {'text': 'Z-Score Monitor', 'xref': 'paper', 'yref': 'paper', 'x': 0, 'y': 0.41, 'showarrow': False, 'font': {'size': 12}},
+            {'text': 'Acceleration', 'xref': 'paper', 'yref': 'paper', 'x': 0, 'y': 0.26, 'showarrow': False, 'font': {'size': 12}},
+            {'text': 'Rolling Skew', 'xref': 'paper', 'yref': 'paper', 'x': 0, 'y': 0.12, 'showarrow': False, 'font': {'size': 12}},
             {'text': f'POC {poc:.2f}', 'xref': 'paper', 'yref': 'y', 'x': 1, 'y': float(poc), 'showarrow': False, 'xanchor': 'right', 'font': {'size': 11, 'color': '#f87171'}},
             {'text': f'VAH {vah:.2f}', 'xref': 'paper', 'yref': 'y', 'x': 1, 'y': float(vah), 'showarrow': False, 'xanchor': 'right', 'font': {'size': 11, 'color': '#4ade80'}},
             {'text': f'VAL {val:.2f}', 'xref': 'paper', 'yref': 'y', 'x': 1, 'y': float(val), 'showarrow': False, 'xanchor': 'right', 'font': {'size': 11, 'color': '#4ade80'}},
@@ -459,6 +495,8 @@ def build_plotly_figure(df, poc, vah, val, ticker, interval):
             {'type': 'line', 'xref': 'x', 'yref': 'y', 'x0': x_values[0], 'x1': x_values[-1], 'y0': float(val), 'y1': float(val), 'line': {'color': '#4ade80', 'width': 1}},
             {'type': 'line', 'xref': 'x3', 'yref': 'y3', 'x0': x_values[0], 'x1': x_values[-1], 'y0': -1.5, 'y1': -1.5, 'line': {'color': '#ef4444', 'width': 1, 'dash': 'dash'}},
             {'type': 'line', 'xref': 'x3', 'yref': 'y3', 'x0': x_values[0], 'x1': x_values[-1], 'y0': 0, 'y1': 0, 'line': {'color': 'rgba(255,255,255,0.3)', 'width': 1}},
+            {'type': 'line', 'xref': 'x4', 'yref': 'y4', 'x0': x_values[0], 'x1': x_values[-1], 'y0': 0, 'y1': 0, 'line': {'color': 'rgba(255,255,255,0.3)', 'width': 1}},
+            {'type': 'line', 'xref': 'x5', 'yref': 'y5', 'x0': x_values[0], 'x1': x_values[-1], 'y0': 0, 'y1': 0, 'line': {'color': 'rgba(255,255,255,0.3)', 'width': 1}},
         ],
     }
 
@@ -508,7 +546,7 @@ def build_snapshot(df, poc, vah, val, ml_acc, prob_up, ev, ticker, interval):
     }
 
 
-def build_ai_analysis(snapshot):
+def build_fallback_ai_analysis(snapshot):
     close = snapshot['close']
     vah = snapshot['vah']
     val = snapshot['val']
@@ -553,11 +591,112 @@ def build_ai_analysis(snapshot):
     if not risks:
         risks.append('Rui ro ngan han chua noi bat, van nen quan tri vi the theo POC va VAL.')
 
+    action = 'BUY' if (prob_up is not None and prob_up >= 55 and close >= snapshot['poc']) else ('SELL' if (prob_up is not None and prob_up <= 45 and close < snapshot['poc']) else 'HOLD')
+    confidence = 72 if action != 'HOLD' else 58
+
     return {
         'title': f'AI Analysis - {snapshot["ticker"]}',
         'summary': f'{location} {momentum} {model_view}',
         'bullets': risks[:3],
+        'indicators': [
+            {'name': 'Close vs Value Area', 'status': 'positive' if close > snapshot['poc'] else 'negative', 'analysis': location},
+            {'name': 'Z-Score', 'status': 'positive' if z_score < 0 else 'neutral', 'analysis': momentum},
+            {'name': 'Rolling Skew', 'status': 'negative' if roll_skew < 0 else 'positive', 'analysis': f'Rolling skew hien tai = {roll_skew}.'},
+            {'name': 'Acceleration', 'status': 'positive' if acceleration > 0 else 'negative', 'analysis': f'Acceleration hien tai = {acceleration}.'},
+            {'name': 'Prob Up / EV', 'status': 'positive' if (prob_up or 0) >= 55 and (ev or 0) > 0 else 'negative', 'analysis': model_view},
+        ],
+        'recommendation': {
+            'action': action,
+            'confidence': confidence,
+            'reason': model_view,
+            'disclaimer': 'Chi la goc nhin dinh luong tu AI, khong phai khuyen nghi dau tu bat buoc.'
+        }
     }
+
+
+def get_github_models_token():
+    return os.getenv('GITHUB_MODELS_TOKEN') or os.getenv('GITHUB_PAT')
+
+
+def build_indicator_prompt(snapshot):
+    return json.dumps({
+        'ticker': snapshot['ticker'],
+        'interval': snapshot['interval'],
+        'signal': snapshot['signal'],
+        'close': snapshot['close'],
+        'poc': snapshot['poc'],
+        'vah': snapshot['vah'],
+        'val': snapshot['val'],
+        'z_score': snapshot['z_score'],
+        'p_value': snapshot['p_value'],
+        'roll_skew': snapshot['roll_skew'],
+        'rel_z_score': snapshot['rel_z_score'],
+        'acceleration': snapshot['acceleration'],
+        'prob_up': snapshot['prob_up'],
+        'ev': snapshot['ev'],
+        'ml_acc': snapshot['ml_acc'],
+        'mean_close': snapshot['mean_close'],
+        'std_close': snapshot['std_close'],
+        'skew': snapshot['skew'],
+    }, ensure_ascii=False)
+
+
+def build_ai_analysis(snapshot):
+    token = get_github_models_token()
+    fallback = build_fallback_ai_analysis(snapshot)
+    if not token:
+        return fallback
+
+    system_prompt = (
+        'You are a cautious quantitative market analyst. '
+        'Analyze each indicator separately, then return a concise JSON object only. '
+        'Never promise profit. Recommendation action must be one of BUY, SELL, HOLD.'
+    )
+    user_prompt = (
+        'Analyze the following market snapshot. '
+        'Return JSON with keys: title, summary, bullets, indicators, recommendation. '
+        'indicators must be an array of objects with keys name, status, analysis. '
+        'recommendation must include action, confidence, reason, disclaimer. '
+        'Keep text concise and practical.\n\n'
+        f'{build_indicator_prompt(snapshot)}'
+    )
+    payload = {
+        'model': GITHUB_MODELS_NAME,
+        'messages': [
+            {'role': 'system', 'content': system_prompt},
+            {'role': 'user', 'content': user_prompt},
+        ],
+        'temperature': 0.2,
+        'max_tokens': 700,
+        'response_format': {'type': 'json_object'},
+    }
+
+    request = urllib.request.Request(
+        GITHUB_MODELS_ENDPOINT,
+        data=json.dumps(payload).encode('utf-8'),
+        headers={
+            'Accept': 'application/vnd.github+json',
+            'Authorization': f'Bearer {token}',
+            'X-GitHub-Api-Version': GITHUB_MODELS_API_VERSION,
+            'Content-Type': 'application/json',
+        },
+        method='POST',
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=15) as response:
+            body = json.loads(response.read().decode('utf-8'))
+        content = body['choices'][0]['message']['content']
+        parsed = json.loads(content)
+        parsed.setdefault('title', fallback['title'])
+        parsed.setdefault('summary', fallback['summary'])
+        parsed.setdefault('bullets', fallback['bullets'])
+        parsed.setdefault('indicators', fallback['indicators'])
+        parsed.setdefault('recommendation', fallback['recommendation'])
+        return parsed
+    except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, KeyError, json.JSONDecodeError) as exc:
+        logger.warning('GitHub Models analysis failed: %s', exc)
+        fallback['bullets'] = [f'GitHub Models API fallback: {exc}'] + fallback['bullets'][:2]
+        return fallback
 
 
 @app.route('/')
