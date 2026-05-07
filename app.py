@@ -15,8 +15,6 @@ from flask_cors import CORS
 import numpy as np
 import pandas as pd
 import scipy.stats as stats
-import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -341,63 +339,55 @@ def run_analysis(df, interval):
 
 def build_plotly_figure(df, poc, vah, val, ticker, interval):
     time_fmt = '%Y-%m-%d %H:%M' if interval != '1D' else '%Y-%m-%d'
-    x_values = df.index.strftime(time_fmt)
-    fig = make_subplots(
-        rows=3,
-        cols=1,
-        row_heights=[0.62, 0.16, 0.22],
-        specs=[[{'type': 'xy'}], [{'type': 'xy'}], [{'type': 'xy'}]],
-        subplot_titles=[
-            f'{ticker} - Candlestick & Signals ({interval})',
-            'Volume',
-            'Z-Score Monitor'
-        ],
-        vertical_spacing=0.06,
-    )
-
-    fig.add_trace(
-        go.Candlestick(
-            x=x_values,
-            open=df['Open'],
-            high=df['High'],
-            low=df['Low'],
-            close=df['Close'],
-            name='Candles',
-            increasing_line_color='#22c55e',
-            decreasing_line_color='#ef4444',
-            increasing_fillcolor='#22c55e',
-            decreasing_fillcolor='#ef4444',
-        ),
-        row=1,
-        col=1,
-    )
-    fig.add_trace(
-        go.Scatter(
-            x=x_values,
-            y=df['Close_Smoothed'],
-            mode='lines',
-            name='Smoothed',
-            line=dict(color='#f8fafc', width=1.2, dash='dot'),
-        ),
-        row=1,
-        col=1,
-    )
-    volume_colors = np.where(df['Close'] >= df['Open'], '#22c55e', '#ef4444')
-    fig.add_trace(
-        go.Bar(
-            x=x_values,
-            y=df['Volume'],
-            name='Volume',
-            marker_color=volume_colors,
-            opacity=0.75,
-        ),
-        row=2,
-        col=1,
-    )
-    fig.add_hrect(y0=val, y1=vah, fillcolor='rgba(34,197,94,0.10)', line_width=0, row=1, col=1)
-    fig.add_hline(y=poc, line_dash='dash', line_color='#f87171', annotation_text=f'POC {poc:.2f}', row=1, col=1)
-    fig.add_hline(y=vah, line_color='#4ade80', line_width=1, annotation_text=f'VAH {vah:.2f}', row=1, col=1)
-    fig.add_hline(y=val, line_color='#4ade80', line_width=1, annotation_text=f'VAL {val:.2f}', row=1, col=1)
+    x_values = df.index.strftime(time_fmt).tolist()
+    volume_colors = np.where(df['Close'] >= df['Open'], '#22c55e', '#ef4444').tolist()
+    traces = [
+        {
+            'type': 'candlestick',
+            'x': x_values,
+            'open': df['Open'].astype(float).tolist(),
+            'high': df['High'].astype(float).tolist(),
+            'low': df['Low'].astype(float).tolist(),
+            'close': df['Close'].astype(float).tolist(),
+            'name': 'Candles',
+            'xaxis': 'x',
+            'yaxis': 'y',
+            'increasing': {'line': {'color': '#22c55e'}, 'fillcolor': '#22c55e'},
+            'decreasing': {'line': {'color': '#ef4444'}, 'fillcolor': '#ef4444'},
+        },
+        {
+            'type': 'scatter',
+            'x': x_values,
+            'y': df['Close_Smoothed'].astype(float).bfill().ffill().tolist(),
+            'mode': 'lines',
+            'name': 'Smoothed',
+            'xaxis': 'x',
+            'yaxis': 'y',
+            'line': {'color': '#f8fafc', 'width': 1.2, 'dash': 'dot'},
+        },
+        {
+            'type': 'bar',
+            'x': x_values,
+            'y': df['Volume'].astype(float).tolist(),
+            'name': 'Volume',
+            'xaxis': 'x2',
+            'yaxis': 'y2',
+            'marker': {'color': volume_colors},
+            'opacity': 0.75,
+        },
+        {
+            'type': 'scatter',
+            'x': x_values,
+            'y': df['Z_Score'].astype(float).fillna(0).tolist(),
+            'mode': 'lines',
+            'name': 'Z-Score',
+            'xaxis': 'x3',
+            'yaxis': 'y3',
+            'line': {'color': '#a78bfa', 'width': 1.6},
+            'fill': 'tozeroy',
+            'fillcolor': 'rgba(167,139,250,0.10)',
+        },
+    ]
 
     for sig, color, sym, name in [
         ('Fake Nuke', '#fb923c', 'triangle-up', 'Fake Nuke'),
@@ -406,49 +396,50 @@ def build_plotly_figure(df, poc, vah, val, ticker, interval):
     ]:
         mask = df['Signal'] == sig
         if mask.any():
-            fig.add_trace(
-                go.Scatter(
-                    x=df[mask].index.strftime(time_fmt),
-                    y=df[mask]['Close'],
-                    mode='markers',
-                    name=name,
-                    marker=dict(color=color, size=10, symbol=sym, line=dict(width=1, color='white')),
-                ),
-                row=1,
-                col=1,
-            )
+            traces.append({
+                'type': 'scatter',
+                'x': df[mask].index.strftime(time_fmt).tolist(),
+                'y': df[mask]['Close'].astype(float).tolist(),
+                'mode': 'markers',
+                'name': name,
+                'xaxis': 'x',
+                'yaxis': 'y',
+                'marker': {'color': color, 'size': 10, 'symbol': sym, 'line': {'width': 1, 'color': 'white'}},
+            })
 
-    fig.add_trace(
-        go.Scatter(
-            x=x_values,
-            y=df['Z_Score'],
-            mode='lines',
-            name='Z-Score',
-            line=dict(color='#a78bfa', width=1.6),
-            fill='tozeroy',
-            fillcolor='rgba(167,139,250,0.10)',
-        ),
-        row=3,
-        col=1,
-    )
-    fig.add_hline(y=-1.5, line_dash='dash', line_color='#ef4444', annotation_text='Risk threshold', row=3, col=1)
-    fig.add_hline(y=0, line_color='rgba(255,255,255,0.3)', row=3, col=1)
+    layout = {
+        'paper_bgcolor': '#0f172a',
+        'plot_bgcolor': '#172033',
+        'font': {'family': 'Inter, sans-serif', 'color': '#e2e8f0'},
+        'legend': {'orientation': 'h', 'yanchor': 'bottom', 'y': 1.02, 'xanchor': 'left', 'x': 0},
+        'margin': {'l': 30, 'r': 20, 't': 70, 'b': 30},
+        'height': 820,
+        'showlegend': True,
+        'xaxis': {'domain': [0, 1], 'anchor': 'y', 'showgrid': True, 'gridcolor': 'rgba(255,255,255,0.05)', 'rangeslider': {'visible': False}},
+        'yaxis': {'domain': [0.40, 1.0], 'anchor': 'x', 'title': {'text': 'Price'}, 'showgrid': True, 'gridcolor': 'rgba(255,255,255,0.05)'},
+        'xaxis2': {'domain': [0, 1], 'anchor': 'y2', 'showgrid': True, 'gridcolor': 'rgba(255,255,255,0.05)'},
+        'yaxis2': {'domain': [0.24, 0.37], 'anchor': 'x2', 'title': {'text': 'Volume'}, 'showgrid': True, 'gridcolor': 'rgba(255,255,255,0.05)'},
+        'xaxis3': {'domain': [0, 1], 'anchor': 'y3', 'showgrid': True, 'gridcolor': 'rgba(255,255,255,0.05)'},
+        'yaxis3': {'domain': [0.0, 0.19], 'anchor': 'x3', 'title': {'text': 'Z-Score'}, 'showgrid': True, 'gridcolor': 'rgba(255,255,255,0.05)'},
+        'annotations': [
+            {'text': f'{ticker} - Candlestick & Signals ({interval})', 'xref': 'paper', 'yref': 'paper', 'x': 0, 'y': 1.08, 'showarrow': False, 'font': {'size': 16}},
+            {'text': 'Volume', 'xref': 'paper', 'yref': 'paper', 'x': 0, 'y': 0.39, 'showarrow': False, 'font': {'size': 12}},
+            {'text': 'Z-Score Monitor', 'xref': 'paper', 'yref': 'paper', 'x': 0, 'y': 0.21, 'showarrow': False, 'font': {'size': 12}},
+            {'text': f'POC {poc:.2f}', 'xref': 'paper', 'yref': 'y', 'x': 1, 'y': float(poc), 'showarrow': False, 'xanchor': 'right', 'font': {'size': 11, 'color': '#f87171'}},
+            {'text': f'VAH {vah:.2f}', 'xref': 'paper', 'yref': 'y', 'x': 1, 'y': float(vah), 'showarrow': False, 'xanchor': 'right', 'font': {'size': 11, 'color': '#4ade80'}},
+            {'text': f'VAL {val:.2f}', 'xref': 'paper', 'yref': 'y', 'x': 1, 'y': float(val), 'showarrow': False, 'xanchor': 'right', 'font': {'size': 11, 'color': '#4ade80'}},
+        ],
+        'shapes': [
+            {'type': 'rect', 'xref': 'x', 'yref': 'y', 'x0': x_values[0], 'x1': x_values[-1], 'y0': float(val), 'y1': float(vah), 'fillcolor': 'rgba(34,197,94,0.10)', 'line': {'width': 0}},
+            {'type': 'line', 'xref': 'x', 'yref': 'y', 'x0': x_values[0], 'x1': x_values[-1], 'y0': float(poc), 'y1': float(poc), 'line': {'color': '#f87171', 'width': 1, 'dash': 'dash'}},
+            {'type': 'line', 'xref': 'x', 'yref': 'y', 'x0': x_values[0], 'x1': x_values[-1], 'y0': float(vah), 'y1': float(vah), 'line': {'color': '#4ade80', 'width': 1}},
+            {'type': 'line', 'xref': 'x', 'yref': 'y', 'x0': x_values[0], 'x1': x_values[-1], 'y0': float(val), 'y1': float(val), 'line': {'color': '#4ade80', 'width': 1}},
+            {'type': 'line', 'xref': 'x3', 'yref': 'y3', 'x0': x_values[0], 'x1': x_values[-1], 'y0': -1.5, 'y1': -1.5, 'line': {'color': '#ef4444', 'width': 1, 'dash': 'dash'}},
+            {'type': 'line', 'xref': 'x3', 'yref': 'y3', 'x0': x_values[0], 'x1': x_values[-1], 'y0': 0, 'y1': 0, 'line': {'color': 'rgba(255,255,255,0.3)', 'width': 1}},
+        ],
+    }
 
-    fig.update_layout(
-        paper_bgcolor='#0f172a',
-        plot_bgcolor='#172033',
-        font=dict(family='Inter, sans-serif', color='#e2e8f0'),
-        legend=dict(orientation='h', yanchor='bottom', y=1.02, xanchor='left', x=0),
-        margin=dict(l=30, r=20, t=70, b=30),
-        height=820,
-        xaxis_rangeslider_visible=False,
-    )
-    fig.update_xaxes(showgrid=True, gridcolor='rgba(255,255,255,0.05)', tickangle=0)
-    fig.update_yaxes(showgrid=True, gridcolor='rgba(255,255,255,0.05)')
-    fig.update_yaxes(title_text='Price', row=1, col=1)
-    fig.update_yaxes(title_text='Volume', row=2, col=1)
-    fig.update_yaxes(title_text='Z-Score', row=3, col=1)
-    return json.loads(fig.to_json())
+    return {'data': traces, 'layout': layout}
 
 
 def to_py_float(value, digits=None):
