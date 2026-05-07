@@ -265,38 +265,56 @@ def normalize_quote_frame(df, interval):
     return optimize_dataframe(df.sort_index(), interval)
 
 
-def fetch_quote_data(symbol, start_date, end_date, interval, sources):
-    from vnstock import Quote
+def fetch_stock_data(ticker, start_date, end_date, interval):
+    from vnstock import Vnstock
 
     errors = []
-    for source in sources:
-        cached_df = load_cached_frame(symbol, start_date, end_date, interval, source)
+    for source in ['KBS', 'VCI']:
+        cached_df = load_cached_frame(ticker, start_date, end_date, interval, source.lower())
         if cached_df is not None:
-            logger.info('Loaded %s %s from cache (%s)', symbol, interval, source)
+            logger.info('Loaded %s %s from cache (%s)', ticker, interval, source)
             return normalize_quote_frame(cached_df.copy(), interval)
 
         try:
-            quote = Quote(source=source, symbol=symbol, show_log=False)
-            df = quote.history(start=start_date, end=end_date, interval=interval)
+            stock = Vnstock().stock(symbol=ticker, source=source)
+            df = stock.quote.history(start=start_date, end=end_date, interval=interval)
             if df is None or df.empty:
                 raise ValueError('empty dataframe')
-            save_cached_frame(df, symbol, start_date, end_date, interval, source)
-            logger.info('Fetched %s %s from vnstock source=%s rows=%s', symbol, interval, source, len(df))
+            save_cached_frame(df, ticker, start_date, end_date, interval, source.lower())
+            logger.info('Fetched %s %s from legacy vnstock source=%s rows=%s', ticker, interval, source, len(df))
             return normalize_quote_frame(df, interval)
         except Exception as exc:
-            logger.warning('vnstock fetch failed for %s source=%s interval=%s: %s', symbol, source, interval, exc)
+            logger.warning('legacy vnstock fetch failed for %s source=%s interval=%s: %s', ticker, source, interval, exc)
             errors.append(f'{source}: {exc}')
             time.sleep(0.6)
 
-    raise ValueError(f'Khong the lay du lieu {symbol} tu vnstock. Sources tried: {" | ".join(errors)}')
-
-
-def fetch_stock_data(ticker, start_date, end_date, interval):
-    return fetch_quote_data(ticker, start_date, end_date, interval, sources=['vci', 'kbs'])
+    raise ValueError(f'Khong the lay du lieu {ticker}. Sources tried: {" | ".join(errors)}')
 
 
 def fetch_vnindex_data(start_date, end_date, interval):
-    return fetch_quote_data('VNINDEX', start_date, end_date, interval, sources=['vci', 'kbs'])
+    from vnstock import Vnstock
+
+    errors = []
+    for source in ['VCI', 'KBS']:
+        cached_df = load_cached_frame('VNINDEX', start_date, end_date, interval, source.lower())
+        if cached_df is not None:
+            logger.info('Loaded VNINDEX %s from cache (%s)', interval, source)
+            return normalize_quote_frame(cached_df.copy(), interval)
+
+        try:
+            stock = Vnstock().stock(symbol='VNINDEX', source=source)
+            df = stock.quote.history(start=start_date, end=end_date, interval=interval)
+            if df is None or df.empty:
+                raise ValueError('empty dataframe')
+            save_cached_frame(df, 'VNINDEX', start_date, end_date, interval, source.lower())
+            logger.info('Fetched VNINDEX %s from legacy vnstock source=%s rows=%s', interval, source, len(df))
+            return normalize_quote_frame(df, interval)
+        except Exception as exc:
+            logger.warning('legacy vnstock fetch failed for VNINDEX source=%s interval=%s: %s', source, interval, exc)
+            errors.append(f'{source}: {exc}')
+            time.sleep(0.6)
+
+    raise ValueError(f'Khong the lay du lieu VNINDEX. Sources tried: {" | ".join(errors)}')
 
 
 def run_analysis(df, interval):
