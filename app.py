@@ -14,6 +14,8 @@ from plotly.subplots import make_subplots
 import plotly.utils
 import json
 import logging
+import io
+import importlib
 from datetime import datetime
 
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -175,6 +177,50 @@ INTERVAL_WINDOWS = {
     '1H': {'stats': 24, 'smooth': 6, 'vp_lookback': 120},
     '15m': {'stats': 30, 'smooth': 8, 'vp_lookback': 160},
 }
+
+def import_analysis_module(module_name):
+    import sys
+    import matplotlib
+    matplotlib.use('Agg')
+    if module_name in sys.modules:
+        return importlib.reload(sys.modules[module_name])
+    return importlib.import_module(module_name)
+
+
+def run_analysis_script(mode, ticker, start_date, end_date, interval):
+    module_name = 'stock_quant_analysis' if mode == 'stock' else 'vnindex_quant_analysis'
+    mod = import_analysis_module(module_name)
+
+    # Avoid opening GUI windows when the script plot dashboard is invoked.
+    try:
+        import matplotlib.pyplot as plt
+        plt.show = lambda *args, **kwargs: None
+    except Exception:
+        pass
+
+    options = {'start_date': start_date, 'end_date': end_date, 'interval': interval}
+    if mode == 'stock':
+        options['ticker'] = ticker
+
+    engine = mod.QuantModelEngine(**options)
+
+    log_stream = io.StringIO()
+    handler = logging.StreamHandler(log_stream)
+    handler.setFormatter(logging.Formatter('%(asctime)s - %(levelname)s - %(message)s'))
+    root_logger = logging.getLogger()
+    root_logger.addHandler(handler)
+    root_logger.setLevel(logging.INFO)
+
+    try:
+        df = engine.run()
+    finally:
+        root_logger.removeHandler(handler)
+
+    params = INTERVAL_WINDOWS.get(interval, INTERVAL_WINDOWS['1D'])
+    vp_df = df.tail(params['vp_lookback'])
+    vp, poc, vah, val = MarketMicrostructure(bins=60, val_area_pct=0.70).calc_volume_profile(vp_df)
+    return df, vp, poc, vah, val, log_stream.getvalue()
+
 
 def fetch_stock_data(ticker, start_date, end_date, interval):
     from vnstock import Vnstock
@@ -382,18 +428,22 @@ def analyze():
 
     try:
         if mode == 'vnindex':
-            df = fetch_vnindex_data(start_date, end_date, interval)
+            df, vp, poc, vah, val, output = run_analysis_script('vnindex', ticker, start_date, end_date, interval)
             ticker = 'VNINDEX'
         else:
-            df = fetch_stock_data(ticker, start_date, end_date, interval)
+            df, vp, poc, vah, val, output = run_analysis_script('stock', ticker, start_date, end_date, interval)
 
-        df, vp, poc, vah, val, ml_acc, prob_up, ev = run_analysis(df, interval)
-        snapshot = build_snapshot(df, poc, vah, val, ml_acc, prob_up, ev, ticker, interval)
+        snapshot = build_snapshot(df, poc, vah, val, None, None, None, ticker, interval)
         chart = build_plotly_figure(df, vp, poc, vah, val, ticker, interval)
-        return jsonify({'success': True, 'snapshot': snapshot, 'chart': chart})
+        return jsonify({'success': True, 'snapshot': snapshot, 'chart': chart, 'output': output})
     except Exception as e:
         logger.error(f"Analysis error: {e}", exc_info=True)
         return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.errorhandler(Exception)
+def handle_exception(e):
+    logger.error('Unhandled exception', exc_info=True)
+    return jsonify({'success': False, 'error': str(e)}), 500
 
 if __name__ == '__main__':
     app.run(host='0.0.0.0', port=5000, debug=False)

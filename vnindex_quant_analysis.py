@@ -1,14 +1,17 @@
+import sys
+import os
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+from matplotlib.gridspec import GridSpec
 from vnstock import Vnstock
 import pandas as pd
 import numpy as np
 import scipy.stats as stats
-import matplotlib.pyplot as plt
 import seaborn as sns
-from matplotlib.gridspec import GridSpec
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
 import logging
-import sys
 
 # Đảm bảo in Tiếng Việt không lỗi trên Terminal Windows
 sys.stdout.reconfigure(encoding='utf-8')
@@ -571,9 +574,6 @@ class QuantModelEngine:
         plt.tight_layout()
         plt.show()
 
-import tkinter as tk
-from tkinter import ttk, messagebox
-
 class AppGUI:
     INTERVAL_OPTIONS = {
         'Ngày (1D)': '1D',
@@ -582,6 +582,9 @@ class AppGUI:
     }
 
     def __init__(self, root):
+        import tkinter as tk
+        from tkinter import ttk, messagebox
+        
         self.root = root
         self.root.title("VN-Index Quant Anomaly Detector")
         self.root.geometry("500x320")

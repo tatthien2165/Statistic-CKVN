@@ -238,6 +238,38 @@
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
         .error-msg {
+            margin-top: 1rem;
+            padding: 0.75rem 1rem;
+            background: rgba(239, 68, 68, 0.1);
+            color: #fecaca;
+            border: 1px solid rgba(248, 113, 113, 0.25);
+            border-radius: 0.75rem;
+        }
+
+        .terminal-output {
+            margin-top: 1rem;
+            padding: 1rem;
+            background: rgba(15, 23, 42, 0.8);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 1rem;
+            color: #e2e8f0;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            white-space: pre-wrap;
+            max-height: 320px;
+            overflow-y: auto;
+        }
+
+        .terminal-output.hidden {
+            display: none;
+        }
+
+        .terminal-output-title {
+            font-size: 0.95rem;
+            font-weight: 700;
+            margin-bottom: 0.75rem;
+            color: #93c5fd;
+        }
+        .error-msg {
             color: var(--accent-red);
             background: rgba(239, 68, 68, 0.1);
             padding: 1rem;
@@ -335,7 +367,10 @@
             </div>
 
             <div id="chart-container"></div>
-        </div>
+                    <div class="terminal-output hidden" id="terminal-output">
+                        <div class="terminal-output-title">Terminal Output</div>
+                        <div id="terminal-output-content">Chưa có kết quả.</div>
+                    </div>
     </div>
 
     <script>
@@ -374,11 +409,15 @@
             const loader = document.getElementById('loader');
             const snapshot = document.getElementById('snapshot');
             const errorMsg = document.getElementById('error-msg');
+            const outputArea = document.getElementById('terminal-output');
+            const outputContent = document.getElementById('terminal-output-content');
 
             runBtn.disabled = true;
             loader.style.display = 'block';
             snapshot.style.display = 'none';
             errorMsg.style.display = 'none';
+            outputArea.classList.add('hidden');
+            outputContent.textContent = '';
 
             try {
                 const response = await fetch('/api/analyze', {
@@ -420,9 +459,15 @@
                     });
 
                     snapshot.style.display = 'block';
+                    outputContent.textContent = data.output || 'No terminal output captured.';
+                    outputArea.classList.remove('hidden');
                 } else {
                     errorMsg.textContent = 'Lỗi: ' + data.error;
                     errorMsg.style.display = 'block';
+                    outputContent.textContent = data.output || '';
+                    if (data.output) {
+                        outputArea.classList.remove('hidden');
+                    }
                 }
             } catch (e) {
                 errorMsg.textContent = 'Lỗi kết nối Server: ' + e.message;

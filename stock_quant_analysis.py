@@ -1,16 +1,16 @@
+import sys
+import os
+import matplotlib
+matplotlib.use('Agg')
+import matplotlib.pyplot as plt
+from matplotlib.gridspec import GridSpec
 import pandas as pd
 import numpy as np
 import scipy.stats as stats
-import matplotlib.pyplot as plt
 import seaborn as sns
-from matplotlib.gridspec import GridSpec
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.metrics import accuracy_score
 import logging
-import sys
-import os
-import tkinter as tk
-from tkinter import ttk, messagebox
 from vnstock import Vnstock
 
 # Đảm bảo in Tiếng Việt không lỗi trên Terminal Windows
@@ -495,6 +495,9 @@ class StockAppGUI:
     }
 
     def __init__(self, root):
+        import tkinter as tk
+        from tkinter import ttk, messagebox
+        
         self.root = root
         self.root.title("Stock Quant Anomaly Detector")
         self.root.geometry("500x400")
