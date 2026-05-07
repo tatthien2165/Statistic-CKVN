@@ -8,6 +8,8 @@ import os
 import pickle
 import time
 
+os.environ.setdefault('MPLCONFIGDIR', '/tmp/matplotlib')
+
 from flask import Flask, jsonify, render_template, request
 from flask_cors import CORS
 import numpy as np
@@ -266,25 +268,25 @@ def normalize_quote_frame(df, interval):
 
 
 def fetch_stock_data(ticker, start_date, end_date, interval):
-    from vnstock import Vnstock
+    from vnstock import Quote
 
     errors = []
-    for source in ['KBS', 'VCI']:
+    for source in ['kbs', 'vci']:
         cached_df = load_cached_frame(ticker, start_date, end_date, interval, source.lower())
         if cached_df is not None:
             logger.info('Loaded %s %s from cache (%s)', ticker, interval, source)
             return normalize_quote_frame(cached_df.copy(), interval)
 
         try:
-            stock = Vnstock().stock(symbol=ticker, source=source)
-            df = stock.quote.history(start=start_date, end=end_date, interval=interval)
+            quote = Quote(source=source, symbol=ticker, show_log=False)
+            df = quote.history(start=start_date, end=end_date, interval=interval)
             if df is None or df.empty:
                 raise ValueError('empty dataframe')
             save_cached_frame(df, ticker, start_date, end_date, interval, source.lower())
-            logger.info('Fetched %s %s from legacy vnstock source=%s rows=%s', ticker, interval, source, len(df))
+            logger.info('Fetched %s %s from vnstock quote source=%s rows=%s', ticker, interval, source, len(df))
             return normalize_quote_frame(df, interval)
         except Exception as exc:
-            logger.warning('legacy vnstock fetch failed for %s source=%s interval=%s: %s', ticker, source, interval, exc)
+            logger.warning('vnstock quote fetch failed for %s source=%s interval=%s: %s', ticker, source, interval, exc)
             errors.append(f'{source}: {exc}')
             time.sleep(0.6)
 
@@ -292,25 +294,25 @@ def fetch_stock_data(ticker, start_date, end_date, interval):
 
 
 def fetch_vnindex_data(start_date, end_date, interval):
-    from vnstock import Vnstock
+    from vnstock import Quote
 
     errors = []
-    for source in ['VCI', 'KBS']:
+    for source in ['vci', 'kbs']:
         cached_df = load_cached_frame('VNINDEX', start_date, end_date, interval, source.lower())
         if cached_df is not None:
             logger.info('Loaded VNINDEX %s from cache (%s)', interval, source)
             return normalize_quote_frame(cached_df.copy(), interval)
 
         try:
-            stock = Vnstock().stock(symbol='VNINDEX', source=source)
-            df = stock.quote.history(start=start_date, end=end_date, interval=interval)
+            quote = Quote(source=source, symbol='VNINDEX', show_log=False)
+            df = quote.history(start=start_date, end=end_date, interval=interval)
             if df is None or df.empty:
                 raise ValueError('empty dataframe')
             save_cached_frame(df, 'VNINDEX', start_date, end_date, interval, source.lower())
-            logger.info('Fetched VNINDEX %s from legacy vnstock source=%s rows=%s', interval, source, len(df))
+            logger.info('Fetched VNINDEX %s from vnstock quote source=%s rows=%s', interval, source, len(df))
             return normalize_quote_frame(df, interval)
         except Exception as exc:
-            logger.warning('legacy vnstock fetch failed for VNINDEX source=%s interval=%s: %s', source, interval, exc)
+            logger.warning('vnstock quote fetch failed for VNINDEX source=%s interval=%s: %s', source, interval, exc)
             errors.append(f'{source}: {exc}')
             time.sleep(0.6)
 
