@@ -120,14 +120,24 @@ class AnomalyDetector:
         self.z_thresh = z_thresh
         self.p_thresh = p_thresh
 
-    def detect(self, df, vp_val, vp_poc, vp_vah):
+    def detect(self, df, vp_val, vp_poc, vp_vah, params):
         df = df.copy()
         df['Signal'] = 'Normal'
+        mm = MarketMicrostructure(bins=60, val_area_pct=0.70)
         for i in range(1, len(df)):
             curr = df.iloc[i]
             prev = df.iloc[i - 1]
             if pd.isna(curr['Z_Score']) or pd.isna(curr['Skewness_ShortTerm']) or pd.isna(curr['Acceleration']):
                 continue
+
+            # Calculate dynamic POC up to current candle
+            vp_lookback = params['vp_lookback']
+            current_df = df.iloc[:i+1]
+            vp_df = current_df.tail(vp_lookback) if len(current_df) >= vp_lookback else current_df
+            if not vp_df.empty:
+                vp, poc_dynamic, vah_dynamic, val_dynamic = mm.calc_volume_profile(vp_df)
+            else:
+                poc_dynamic = vp_poc  # fallback
 
             is_nuke = (curr['Z_Score'] <= self.z_thresh) and (curr['P_Value'] <= self.p_thresh)
             if is_nuke:
@@ -144,9 +154,9 @@ class AnomalyDetector:
             recovering_z = (curr['Z_Score'] > -1.0) and (prev['Z_Score'] < -1.5)
             strong_accel = (curr['Acceleration'] > 0) and (curr['Acceleration'] > prev['Acceleration'])
             price_reclaiming_val = (curr['Close'] > vp_val) and (prev['Close'] <= vp_val)
-            price_reclaiming_poc = (curr['Close'] > vp_poc) and (prev['Close'] <= vp_poc)
+            price_reclaiming_poc = (curr['Close'] > poc_dynamic) and (prev['Close'] <= poc_dynamic)
             if (recovering_z and strong_accel) or (price_reclaiming_val and strong_accel) or (price_reclaiming_poc and curr['Z_Score'] > 0):
-                if curr['Log_Return'] > 0 and curr['Close'] > vp_poc:
+                if curr['Log_Return'] > 0 and curr['Close'] > poc_dynamic:
                     df.iloc[i, df.columns.get_loc('Signal')] = 'Bullish Reversal'
                 continue
 
@@ -154,9 +164,9 @@ class AnomalyDetector:
             overbought_z = (curr['Z_Score'] < 1.0) and (prev['Z_Score'] > 1.5)
             strong_decel = (curr['Acceleration'] < 0) and (curr['Acceleration'] < prev['Acceleration'])
             price_breaking_val = (curr['Close'] < vp_val) and (prev['Close'] >= vp_val)
-            price_breaking_poc = (curr['Close'] < vp_poc) and (prev['Close'] >= vp_poc)
+            price_breaking_poc = (curr['Close'] < poc_dynamic) and (prev['Close'] >= poc_dynamic)
             if (overbought_z and strong_decel) or (price_breaking_val and strong_decel) or (price_breaking_poc and curr['Z_Score'] < 0):
-                if curr['Log_Return'] < 0 and curr['Close'] < vp_poc:
+                if curr['Log_Return'] < 0 and curr['Close'] < poc_dynamic:
                     df.iloc[i, df.columns.get_loc('Signal')] = 'Bearish Reversal'
         return df
 
@@ -371,7 +381,7 @@ def run_analysis(df, interval):
     vp_df = df.tail(params['vp_lookback'])
     vp, poc, vah, val = mm.calc_volume_profile(vp_df)
     df = cla.calculate_kinematics(df, col='Close_Smoothed')
-    df = det.detect(df, vp_val=val, vp_poc=poc, vp_vah=vah)
+    df = det.detect(df, vp_val=val, vp_poc=poc, vp_vah=vah, params=params)
     ml_acc, prob_up, ev = ml.train_and_predict(df)
     return df, vp, poc, vah, val, ml_acc, prob_up, ev
 
