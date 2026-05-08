@@ -517,6 +517,25 @@ def build_snapshot(df, poc, vah, val, ml_acc, prob_up, ev, ticker, interval):
     signal = latest['Signal']
     signal_class = 'fake' if 'Fake' in signal else ('real' if 'Real' in signal else ('bull' if 'Bullish' in signal else 'normal'))
 
+    def future_signal_return(event_index, periods=3):
+        if event_index >= len(df) - 1:
+            return None
+        target_index = min(event_index + periods, len(df) - 1)
+        entry_price = df.iloc[event_index]['Close']
+        exit_price = df.iloc[target_index]['Close']
+        if pd.isna(entry_price) or pd.isna(exit_price) or entry_price == 0:
+            return None
+        return to_py_float((exit_price / entry_price - 1) * 100, 2)
+
+    events = []
+    for idx, row in df[df['Signal'] != 'Normal'].iterrows():
+        event_index = df.index.get_loc(idx)
+        events.append({
+            'time': idx.strftime(time_fmt),
+            'signal': row['Signal'],
+            'return': future_signal_return(event_index, periods=3),
+        })
+
     return {
         'ticker': ticker,
         'interval': interval,
@@ -542,10 +561,7 @@ def build_snapshot(df, poc, vah, val, ml_acc, prob_up, ev, ticker, interval):
         'ml_acc': to_py_float(ml_acc * 100, 1) if ml_acc is not None else None,
         'prob_up': to_py_float(prob_up * 100, 2) if prob_up is not None else None,
         'ev': to_py_float(ev * 100, 4) if ev is not None else None,
-        'events': [
-            {'time': idx.strftime(time_fmt), 'signal': row['Signal'], 'return': to_py_float(row['Log_Return'] * 100, 2)}
-            for idx, row in df[df['Signal'] != 'Normal'].iterrows()
-        ],
+        'events': events,
     }
 
 

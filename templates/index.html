@@ -820,7 +820,8 @@
             empty.style.display = 'none';
             events.slice(-6).reverse().forEach(event => {
                 const li = document.createElement('li');
-                li.textContent = `${event.time} | ${event.signal} | Return ${event.return}%`;
+                const returnText = event.return === null || event.return === undefined ? '-' : `${event.return}%`;
+                li.textContent = `${event.time} | ${event.signal} | Return ${returnText}`;
                 list.appendChild(li);
             });
         }
