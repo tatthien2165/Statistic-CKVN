@@ -25,6 +25,7 @@ logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(
 logger = logging.getLogger('WebQuantModel')
 
 app = Flask(__name__)
+app.config['JSON_AS_ASCII'] = False
 CORS(app)
 
 
