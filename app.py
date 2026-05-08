@@ -130,10 +130,8 @@ class AnomalyDetector:
             if pd.isna(curr['Z_Score']) or pd.isna(curr['Skewness_ShortTerm']) or pd.isna(curr['Acceleration']):
                 continue
 
-            # Calculate dynamic POC up to current candle
-            vp_lookback = params['vp_lookback']
-            current_df = df.iloc[:i+1]
-            vp_df = current_df.tail(vp_lookback) if len(current_df) >= vp_lookback else current_df
+            # Calculate POC for the current candle only
+            vp_df = df.iloc[i:i+1]
             if not vp_df.empty:
                 vp, poc_dynamic, vah_dynamic, val_dynamic = mm.calc_volume_profile(vp_df)
             else:
