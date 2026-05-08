@@ -146,7 +146,7 @@ class AnomalyDetector:
             price_reclaiming_val = (curr['Close'] > vp_val) and (prev['Close'] <= vp_val)
             price_reclaiming_poc = (curr['Close'] > vp_poc) and (prev['Close'] <= vp_poc)
             if (recovering_z and strong_accel) or (price_reclaiming_val and strong_accel) or (price_reclaiming_poc and curr['Z_Score'] > 0):
-                if curr['Log_Return'] > 0:
+                if curr['Log_Return'] > 0 and curr['Close'] > vp_poc:
                     df.iloc[i, df.columns.get_loc('Signal')] = 'Bullish Reversal'
                 continue
 
@@ -156,7 +156,7 @@ class AnomalyDetector:
             price_breaking_val = (curr['Close'] < vp_val) and (prev['Close'] >= vp_val)
             price_breaking_poc = (curr['Close'] < vp_poc) and (prev['Close'] >= vp_poc)
             if (overbought_z and strong_decel) or (price_breaking_val and strong_decel) or (price_breaking_poc and curr['Z_Score'] < 0):
-                if curr['Log_Return'] < 0:
+                if curr['Log_Return'] < 0 and curr['Close'] < vp_poc:
                     df.iloc[i, df.columns.get_loc('Signal')] = 'Bearish Reversal'
         return df
 
