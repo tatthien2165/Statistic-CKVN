@@ -148,6 +148,16 @@ class AnomalyDetector:
             if (recovering_z and strong_accel) or (price_reclaiming_val and strong_accel) or (price_reclaiming_poc and curr['Z_Score'] > 0):
                 if curr['Log_Return'] > 0:
                     df.iloc[i, df.columns.get_loc('Signal')] = 'Bullish Reversal'
+                continue
+
+            # Bearish Reversal conditions
+            overbought_z = (curr['Z_Score'] < 1.0) and (prev['Z_Score'] > 1.5)
+            strong_decel = (curr['Acceleration'] < 0) and (curr['Acceleration'] < prev['Acceleration'])
+            price_breaking_val = (curr['Close'] < vp_val) and (prev['Close'] >= vp_val)
+            price_breaking_poc = (curr['Close'] < vp_poc) and (prev['Close'] >= vp_poc)
+            if (overbought_z and strong_decel) or (price_breaking_val and strong_decel) or (price_breaking_poc and curr['Z_Score'] < 0):
+                if curr['Log_Return'] < 0:
+                    df.iloc[i, df.columns.get_loc('Signal')] = 'Bearish Reversal'
         return df
 
 
@@ -447,6 +457,7 @@ def build_plotly_figure(df, poc, vah, val, ticker, interval):
         ('Fake Nuke', '#fb923c', 'triangle-up', 'Fake Nuke'),
         ('Real Nuke', '#ef4444', 'triangle-down', 'Real Nuke'),
         ('Bullish Reversal', '#22c55e', 'triangle-up', 'Bullish Reversal'),
+        ('Bearish Reversal', '#ef4444', 'triangle-down', 'Bearish Reversal'),
     ]:
         mask = df['Signal'] == sig
         if mask.any():
