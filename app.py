@@ -526,6 +526,8 @@ def build_snapshot(df, poc, vah, val, ml_acc, prob_up, ev, ticker, interval):
         'total_candles': len(df),
         'mean_close': to_py_float(df['Close'].mean(), 2),
         'std_close': to_py_float(df['Close'].std(), 2),
+        'mean_log_return': to_py_float(df['Log_Return'].mean(), 4),
+        'std_log_return': to_py_float(df['Log_Return'].std(), 4),
         'skew': to_py_float(df['Close'].skew(), 2),
         'close': to_py_float(latest['Close'], 2),
         'volume': int(latest['Volume']),
@@ -551,66 +553,83 @@ def build_fallback_ai_analysis(snapshot):
     close = snapshot['close']
     vah = snapshot['vah']
     val = snapshot['val']
+    poc = snapshot['poc']
+    mean_close = snapshot['mean_close']
+    std_close = snapshot['std_close']
     z_score = snapshot['z_score'] if snapshot['z_score'] is not None else 0
-    rel_z_score = snapshot['rel_z_score'] if snapshot['rel_z_score'] is not None else 0
+    mean_log_return = snapshot['mean_log_return']
+    std_log_return = snapshot['std_log_return']
     roll_skew = snapshot['roll_skew'] if snapshot['roll_skew'] is not None else 0
     acceleration = snapshot['acceleration'] if snapshot['acceleration'] is not None else 0
     prob_up = snapshot['prob_up']
     ev = snapshot['ev']
-    signal = snapshot['signal']
+    p_value = snapshot['p_value']
+    skew = snapshot['skew']
 
-    if close > vah:
-        location = 'Gia dang nam tren value area, dong luc tang van chiem uu the.'
-    elif close < val:
-        location = 'Gia dang nam duoi value area, rui ro suy yeu van cao.'
-    else:
-        location = 'Gia dang di trong value area, xu huong hien tai nghieng ve can bang.'
+    # Phần 1: Vị thế giá so với cấu trúc thị trường
+    position_analysis = f"""1. Vị thế giá so với cấu trúc thị trường (POC & Value Area)
+Close hiện tại = {close}
 
-    if z_score <= -1.5:
-        momentum = 'Z-Score da vao vung qua ban theo nguong he thong, can theo doi nhip hoi.'
-    elif z_score >= 1.5:
-        momentum = 'Z-Score dang cao, gia de rung lac neu mat dong luc.'
-    else:
-        momentum = 'Z-Score trung tinh, gia chua lech qua xa khoi mean ngan han.'
+POC (Điểm kiểm soát) = {poc} → giá đang {'trên' if close > poc else 'dưới' if close < poc else 'tại'} POC.
 
-    if prob_up is None:
-        model_view = 'Mo hinh xac suat chua du du lieu de dua ra xac suat huong gia ke tiep.'
-    else:
-        direction = 'tang' if prob_up >= 55 else ('giam' if prob_up <= 45 else 'di ngang')
-        ev_text = f' EV uoc tinh {ev:.2f}%.' if ev is not None else ''
-        model_view = f'Mo hinh xac suat nghieng ve kich ban {direction} voi xac suat {prob_up:.2f}%.' + ev_text
+Value Area High = {vah}, Value Area Low = {val} → giá đang nằm {'trên biên trên' if close > vah else 'trong vùng giá trị' if val <= close <= vah else 'sát biên dưới' if close >= val - (vah - val) * 0.1 else 'dưới biên dưới'} của vùng giá trị.
+
+Mean(Close) = {mean_close}, StdDev(Close) = {std_close} → giá hiện tại {'cao hơn' if close > mean_close else 'thấp hơn'} trung bình khoảng {abs((close - mean_close) / std_close):.1f} độ lệch chuẩn. Vị thế này cho thấy giá đang {'chiết khấu về vùng hỗ trợ quan trọng' if close < mean_close else 'trong vùng kháng cự mạnh'}."""
+
+    # Phần 2: Các chỉ báo động lượng & phân phối lợi suất
+    momentum_analysis = f"""2. Các chỉ báo động lượng & phân phối lợi suất
+Z-Score = {z_score} (dựa trên Log Return với μ={mean_log_return}, σ={std_log_return}): Lợi suất gần đây {'dương' if z_score > 0 else 'âm'} gần {abs(z_score):.1f} độ lệch chuẩn, phản ánh {'áp lực mua' if z_score > 0 else 'áp lực bán'} ngắn hạn, {'chưa đến ngưỡng cực đoan' if abs(z_score) < 2 else 'đã đến ngưỡng cực đoan'} (thường >2 hoặc <-2 mới là quá mua/bán mạnh).
+
+Skew = {skew} ({'lệch phải' if skew > 0 else 'lệch trái'} tổng thể): Phân phối lợi suất dài hạn vẫn {'lệch phải' if skew > 0 else 'lệch trái'}, {'đuôi phải dày hơn' if skew > 0 else 'đuôi trái dày hơn'}, tức là cổ phiếu có xu hướng xuất hiện các nhịp {'tăng mạnh' if skew > 0 else 'giảm mạnh'} khi hồi phục.
+
+Roll Skew = {roll_skew} (độ lệch cuộn ngắn hạn): {'Khá cao' if roll_skew > 1 else 'Thấp'}, cho thấy giai đoạn gần đây có những phiên {'tăng đột biến' if roll_skew > 0 else 'giảm đột biến'} (lợi suất {'dương' if roll_skew > 0 else 'âm'} lớn). Điều này cảnh báo rằng thị trường đã có những nhịp {'hưng phấn' if roll_skew > 0 else 'bán tháo'} cục bộ, và cần thời gian điều chỉnh hoặc tích lũy trở lại.
+
+Acceleration (Gia tốc) = {acceleration}: Gia tốc {'dương' if acceleration > 0 else 'âm'}, {'đang cải thiện' if acceleration > 0 else 'vẫn suy yếu'}. Đây là tín hiệu cho thấy đà {'tăng' if acceleration > 0 else 'giảm'} đã {'bứt phá' if abs(acceleration) > 0.01 else 'chững lại'}, động lượng đang {'cải thiện dần' if acceleration >= 0 else 'suy yếu'}."""
+
+    # Phần 3: Xác suất mô hình và kỳ vọng
+    model_analysis = f"""3. Xác suất mô hình và kỳ vọng
+ML Prob Up = {prob_up}%: Mô hình học máy đưa ra xác suất tăng giá ~{prob_up}%, đây là mức {'khá tích cực' if prob_up > 60 else 'trung lập' if 40 <= prob_up <= 60 else 'tiêu cực'}, cho thấy dữ liệu lịch sử và các yếu tố định lượng {'ủng hộ khả năng tăng' if prob_up > 50 else 'ủng hộ khả năng giảm'} trong những phiên tới.
+
+Exp Value (EV) = {ev}%: Kỳ vọng lợi nhuận trung bình hàng ngày là {ev}%, {'dương' if ev > 0 else 'âm'}, phù hợp với thị trường đang trong giai đoạn {'hồi phục' if ev > 0 else 'suy yếu'}.
+
+P-Value = {p_value} (từ kiểm định bất thường): {'<' if p_value < 0.05 else '>'}0.05, {'có bất thường có ý nghĩa thống kê cần lo ngại' if p_value < 0.05 else 'không có bất thường có ý nghĩa thống kê cần lo ngại'}."""
+
+    # Kết luận
+    conclusion = f"Kết luận: Dựa trên phân tích trên, khuyến nghị {'MUA' if prob_up > 60 and close > poc else 'BÁN' if prob_up < 40 and close < poc else 'GIỮ'} với độ tin cậy {72 if prob_up > 60 or prob_up < 40 else 58}%. Thị trường đang {'trong giai đoạn tích cực' if prob_up > 55 else 'trung lập' if 45 <= prob_up <= 55 else 'tiêu cực'}, cần theo dõi sát sao các ngưỡng POC và VAL."
+
+    summary = f"{position_analysis}\n\n{momentum_analysis}\n\n{model_analysis}\n\n{conclusion}"
 
     risks = []
-    if signal != 'Normal':
-        risks.append(f'Tin hieu hien tai la {signal}, can xac nhan them bang nen va thanh khoan.')
-    if acceleration < 0:
-        risks.append('Gia toc gia dang am, nhip tang neu co co the chua ben.')
+    if z_score < -1.5:
+        risks.append('Z-Score quá bán, có thể hồi phục.')
     if roll_skew < 0:
-        risks.append('Rolling skew am cho thay loi suat ngan han van lech ve phia giam.')
-    if abs(rel_z_score) > 1:
-        risks.append('Relative Z-Score dang lech ro khoi POC, can de phong nhip mean reversion.')
+        risks.append('Rolling skew âm, xu hướng giảm ngắn hạn.')
+    if acceleration < 0:
+        risks.append('Gia tốc âm, động lượng suy yếu.')
+    if p_value < 0.05:
+        risks.append('Có bất thường thống kê, cần cẩn trọng.')
     if not risks:
-        risks.append('Rui ro ngan han chua noi bat, van nen quan tri vi the theo POC va VAL.')
+        risks.append('Không có rủi ro nổi bật hiện tại.')
 
-    action = 'BUY' if (prob_up is not None and prob_up >= 55 and close >= snapshot['poc']) else ('SELL' if (prob_up is not None and prob_up <= 45 and close < snapshot['poc']) else 'HOLD')
+    action = 'BUY' if prob_up > 60 and close >= poc else 'SELL' if prob_up < 40 and close < poc else 'HOLD'
     confidence = 72 if action != 'HOLD' else 58
 
     return {
         'title': f'AI Analysis - {snapshot["ticker"]}',
-        'summary': f'{location} {momentum} {model_view}',
+        'summary': summary,
         'bullets': risks[:3],
         'indicators': [
-            {'name': 'Close vs Value Area', 'status': 'positive' if close > snapshot['poc'] else 'negative', 'analysis': location},
-            {'name': 'Z-Score', 'status': 'positive' if z_score < 0 else 'neutral', 'analysis': momentum},
-            {'name': 'Rolling Skew', 'status': 'negative' if roll_skew < 0 else 'positive', 'analysis': f'Rolling skew hien tai = {roll_skew}.'},
-            {'name': 'Acceleration', 'status': 'positive' if acceleration > 0 else 'negative', 'analysis': f'Acceleration hien tai = {acceleration}.'},
-            {'name': 'Prob Up / EV', 'status': 'positive' if (prob_up or 0) >= 55 and (ev or 0) > 0 else 'negative', 'analysis': model_view},
+            {'name': 'Close vs Value Area', 'status': 'positive' if close > poc else 'negative', 'analysis': f'Giá tại {close}, POC {poc}, VAH {vah}, VAL {val}.'},
+            {'name': 'Z-Score', 'status': 'positive' if z_score < 0 else 'neutral', 'analysis': f'Z-Score {z_score}, phản ánh động lượng.'},
+            {'name': 'Rolling Skew', 'status': 'negative' if roll_skew < 0 else 'positive', 'analysis': f'Roll Skew {roll_skew}, phân phối ngắn hạn.'},
+            {'name': 'Acceleration', 'status': 'positive' if acceleration > 0 else 'negative', 'analysis': f'Acceleration {acceleration}, gia tốc giá.'},
+            {'name': 'Prob Up / EV', 'status': 'positive' if prob_up > 55 else 'negative', 'analysis': f'Xác suất tăng {prob_up}%, EV {ev}%. P-Value {p_value}.'},
         ],
         'recommendation': {
             'action': action,
             'confidence': confidence,
-            'reason': model_view,
-            'disclaimer': 'Chi la goc nhin dinh luong tu AI, khong phai khuyen nghi dau tu bat buoc.'
+            'reason': f'Dựa trên xác suất mô hình {prob_up}% và vị thế giá.',
+            'disclaimer': 'Đây chỉ là góc nhìn định lượng từ AI, không phải khuyến nghị đầu tư bắt buộc.'
         }
     }
 
