@@ -380,7 +380,7 @@ def run_analysis(df, interval):
     df = ts.calculate_log_returns(df)
     df = ts.smooth_data(df, window=params['smooth'])
     df = sa.calculate_rolling_stats(df)
-    vp_df = df.tail(params['vp_lookback'])
+    vp_df = df.copy()
     vp, poc, vah, val = mm.calc_volume_profile(vp_df)
     df = cla.calculate_kinematics(df, col='Close_Smoothed')
     df = det.detect(df, vp_val=val, vp_poc=poc, vp_vah=vah, params=params)
