@@ -302,10 +302,14 @@ def normalize_quote_frame(df, interval):
     df['time'] = pd.to_datetime(df['time'])
     df.set_index('time', inplace=True)
     df.columns = df.columns.str.capitalize()
-    df = df.dropna(subset=['Close'])
+    df = df.dropna(subset=['Open', 'High', 'Low', 'Close', 'Volume'])
     df = df[df.index.dayofweek < 5]
-    if 'Volume' in df.columns:
-        df = df[df['Volume'] > 0]
+    df['Open'] = pd.to_numeric(df['Open'], errors='coerce')
+    df['High'] = pd.to_numeric(df['High'], errors='coerce')
+    df['Low'] = pd.to_numeric(df['Low'], errors='coerce')
+    df['Close'] = pd.to_numeric(df['Close'], errors='coerce')
+    df['Volume'] = pd.to_numeric(df['Volume'], errors='coerce')
+    df = df[(df['Open'] > 0) & (df['High'] > 0) & (df['Low'] > 0) & (df['Close'] > 0) & (df['Volume'] > 0)]
     df = df[~df.index.duplicated(keep='first')]
     return optimize_dataframe(df.sort_index(), interval)
 
